@@ -1,3 +1,4 @@
+/* Layout geral */
 body {
     margin: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -7,6 +8,7 @@ body {
 
 header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
@@ -19,21 +21,59 @@ header {
     font-size: 1.2rem;
 }
 
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
 nav a {
-    margin-left: 1rem;
     color: #e5e7eb;
     text-decoration: none;
     font-size: 0.95rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
 }
 
 nav a:hover {
-    text-decoration: underline;
+    background: #111827;
 }
 
 main {
     padding: 1.5rem 2rem;
 }
 
+footer {
+    margin-top: 2rem;
+    padding: 1rem 2rem;
+    border-top: 1px solid #1f2937;
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+/* Flash messages */
+.flash-container {
+    margin-bottom: 1rem;
+}
+
+.flash {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.flash.success {
+    background: #16a34a33;
+    border: 1px solid #16a34a;
+}
+
+.flash.error {
+    background: #dc262633;
+    border: 1px solid #dc2626;
+}
+
+/* Grid / cards */
 .grid {
     display: grid;
     gap: 1rem;
@@ -66,19 +106,27 @@ main {
     font-size: 1rem;
 }
 
+/* Formulários */
 .form {
-    max-width: 400px;
+    max-width: 420px;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
 
-.form input, .form select, .form textarea {
+.form input,
+.form select,
+.form textarea {
     padding: 0.5rem;
     border-radius: 0.5rem;
     border: 1px solid #4b5563;
     background: #020617;
     color: #e5e7eb;
+}
+
+.form textarea {
+    min-height: 80px;
+    resize: vertical;
 }
 
 button {
@@ -88,37 +136,85 @@ button {
     background: #4f46e5;
     color: white;
     cursor: pointer;
+    font-weight: 500;
 }
 
 button:hover {
     background: #6366f1;
 }
 
-.flash-container {
+/* Imagem detalhe */
+.imagem-detalhe img {
+    max-width: 100%;
+    border-radius: 0.75rem;
     margin-bottom: 1rem;
 }
 
-.flash {
-    padding: 0.5rem 0.75rem;
+.imagem-detalhe h2 {
+    margin-top: 0;
+}
+
+.comentarios {
+    margin-top: 1.5rem;
+}
+
+.comentario {
+    background: #020617;
     border-radius: 0.5rem;
-    margin-bottom: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #1f2937;
+    margin-bottom: 0.5rem;
     font-size: 0.9rem;
 }
 
-.flash.success {
-    background: #16a34a33;
-    border: 1px solid #16a34a;
+/* Pequenos detalhes */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: #1d4ed8;
+    font-size: 0.75rem;
 }
 
-.flash.error {
-    background: #dc262633;
-    border: 1px solid #dc2626;
+.filter-form {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
-footer {
-    margin-top: 2rem;
-    padding: 1rem 2rem;
-    border-top: 1px solid #1f2937;
-    font-size: 0.8rem;
-    color: #9ca3af;
+.lista-simples {
+    list-style: none;
+    padding-left: 0;
+}
+
+.lista-simples li {
+    margin-bottom: 0.25rem;
+}
+
+/* Comentários */
+.form-comentario {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+    header {
+        padding: 0.75rem 1rem;
+    }
+
+    main {
+        padding: 1rem;
+    }
 }

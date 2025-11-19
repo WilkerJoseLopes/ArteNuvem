@@ -2,12 +2,12 @@
 {% block content %}
 <h1>Galeria</h1>
 
-<form method="get">
-    <label>Filtrar por categoria:</label>
-    <select name="categoria" onchange="this.form.submit()">
+<form method="get" class="filter-form">
+    <label for="categoria">Filtrar por categoria:</label>
+    <select id="categoria" name="categoria" onchange="this.form.submit()">
         <option value="">Todas</option>
         {% for c in categorias %}
-            <option value="{{ c.id }}" {% if request.args.get('categoria', type=int) == c.id %}selected{% endif %}>
+            <option value="{{ c.id }}" {% if request.args.get('categoria')|int == c.id %}selected{% endif %}>
                 {{ c.nome }}
             </option>
         {% endfor %}
@@ -21,6 +21,9 @@
         <div class="card-body">
             <h3>{{ img.titulo }}</h3>
             <p>Autor ID: {{ img.id_utilizador }}</p>
+            {% if img.categoria_obj %}
+                <span class="badge">{{ img.categoria_obj.nome }}</span>
+            {% endif %}
         </div>
     </a>
     {% else %}

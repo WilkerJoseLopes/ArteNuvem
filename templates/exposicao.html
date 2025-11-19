@@ -2,6 +2,11 @@
 {% block content %}
 <h1>Exposição do Mês</h1>
 
+<div class="actions-row">
+    <button onclick="gerarPDF('catalogo')">📄 Gerar catálogo (PDF)</button>
+    <button onclick="gerarPDF('certificado')">📜 Gerar certificado (PDF)</button>
+</div>
+
 {% if top %}
 <div class="grid">
     {% for img, votos in top %}
@@ -18,4 +23,22 @@
 {% else %}
 <p>A exposição do mês será anunciada brevemente.</p>
 {% endif %}
+
+<script>
+    async function gerarPDF(tipo) {
+        try {
+            const res = await fetch(`/pdf/${tipo}`);
+            const data = await res.json();
+            if (data.pdf_url) {
+                window.open(data.pdf_url, '_blank');
+            } else if (data.error) {
+                alert("Erro ao gerar PDF: " + data.error);
+            } else {
+                alert("Não foi possível gerar o PDF.");
+            }
+        } catch (e) {
+            alert("Erro de comunicação com o servidor.");
+        }
+    }
+</script>
 {% endblock %}

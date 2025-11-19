@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>ArteNuvem</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -12,6 +13,8 @@
         <a href="{{ url_for('index') }}">Início / Galeria</a>
         <a href="{{ url_for('upload') }}">+ Enviar Arte</a>
         <a href="{{ url_for('exposicao') }}">Exposição do Mês</a>
+        <a href="{{ url_for('admin_categorias') }}">Admin Categorias</a>
+        <a href="{{ url_for('admin_exposicoes') }}">Admin Exposições</a>
     </nav>
 </header>
 
@@ -25,11 +28,12 @@
         </div>
       {% endif %}
     {% endwith %}
+
     {% block content %}{% endblock %}
 </main>
 
 <footer>
-    <small>ArteNuvem &copy; 2025</small>
+    <small>ArteNuvem &copy; 2025 — Projeto académico</small>
 </footer>
 </body>
 </html>

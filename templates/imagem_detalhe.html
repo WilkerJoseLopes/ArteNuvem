@@ -5,10 +5,16 @@
     <h2>{{ imagem.titulo }}</h2>
     <p>Autor ID: {{ imagem.id_utilizador }}</p>
 
-    <form method="post" action="{{ url_for('reacao') }}">
-        <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-        <button name="tipo" value="like">👍 Like ({{ likes }})</button>
-    </form>
+    {% if imagem.categoria_obj %}
+        <p>Categoria: <span class="badge">{{ imagem.categoria_obj.nome }}</span></p>
+    {% endif %}
+
+    <div class="reacoes">
+        <form method="post" action="{{ url_for('reacao') }}">
+            <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+            <button name="tipo" value="like">👍 Like ({{ likes }})</button>
+        </form>
+    </div>
 
     <section class="comentarios">
         <h3>Comentários</h3>
@@ -21,7 +27,7 @@
           <p>Sem comentários ainda.</p>
         {% endfor %}
 
-        <form method="post" action="{{ url_for('comentario') }}">
+        <form method="post" action="{{ url_for('comentario') }}" class="form-comentario">
             <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
             <textarea name="texto" maxlength="140" placeholder="Escreve um comentário curto..." required></textarea>
             <button type="submit">Comentar</button>

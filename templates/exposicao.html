@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Exposição do Mês</h1>
+
+{% if top %}
+<div class="grid">
+    {% for img, votos in top %}
+    <div class="card">
+        <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+        <div class="card-body">
+            <h3>{{ img.titulo }}</h3>
+            <p>Autor ID: {{ img.id_utilizador }}</p>
+            <p>Votos: {{ votos }}</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>A exposição do mês será anunciada brevemente.</p>
+{% endif %}
+{% endblock %}

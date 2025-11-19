@@ -1,24 +1,17 @@
-# app.py
-from flask import Flask
-import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from config import Config
 from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao, Voto
 from datetime import datetime
+import os
 import cloudconvert
-import io
 
-# -------------------------
-#   APP E CONFIG
-# -------------------------
 app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
 
-# Config CloudConvert
 cloudconvert.configure(api_key=app.config["CLOUDCONVERT_API_KEY"])
+
 
 # Pasta local para guardar uploads (em Render é efémero, mas serve para demo)
 UPLOAD_FOLDER = os.path.join("static", "uploads")
@@ -267,4 +260,5 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 

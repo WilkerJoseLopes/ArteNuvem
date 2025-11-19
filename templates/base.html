@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <title>ArteNuvem</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header>
+    <div class="logo">🎨 ArteNuvem</div>
+    <nav>
+        <a href="{{ url_for('index') }}">Início / Galeria</a>
+        <a href="{{ url_for('upload') }}">+ Enviar Arte</a>
+        <a href="{{ url_for('exposicao') }}">Exposição do Mês</a>
+    </nav>
+</header>
+
+<main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</main>
+
+<footer>
+    <small>ArteNuvem &copy; 2025</small>
+</footer>
+</body>
+</html>

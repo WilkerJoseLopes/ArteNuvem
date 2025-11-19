@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Administração de Categorias</h1>
+
+<form method="post" class="form">
+    <label>Nova categoria</label>
+    <input type="text" name="nome" placeholder="Nome da categoria" required>
+    <button type="submit">Adicionar</button>
+</form>
+
+<h2>Categorias existentes</h2>
+<ul class="lista-simples">
+    {% for c in categorias %}
+        <li>{{ c.nome }}</li>
+    {% else %}
+        <li>Sem categorias definidas.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

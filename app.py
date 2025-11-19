@@ -4,22 +4,29 @@ from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposi
 from datetime import datetime
 import os
 import cloudconvert
+from werkzeug.utils import secure_filename  # <- IMPORT NECESSÁRIO
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
 
-cloudconvert.configure(api_key=app.config["CLOUDCONVERT_API_KEY"])
+# 🔥 cria as tabelas logo ao arrancar (tanto local como no Render / PostgreSQL)
+with app.app_context():
+    db.create_all()
 
+# Config CloudConvert (se a API key não existir, a rota de PDF vai verificar)
+cloudconvert.configure(api_key=app.config["CLOUDCONVERT_API_KEY"])
 
 # Pasta local para guardar uploads (em Render é efémero, mas serve para demo)
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # -------------------------
 #   SIMULA LOGIN (demo)
@@ -31,7 +38,11 @@ def fake_login():
     # Numa app real, isto seria sessão + GoogleAuth
     user = Utilizador.query.filter_by(email="aluno@exemplo.com").first()
     if not user:
-        user = Utilizador(nome="Aluno Exemplo", email="aluno@exemplo.com", tipo_utilizador="Aluno")
+        user = Utilizador(
+            nome="Aluno Exemplo",
+            email="aluno@exemplo.com",
+            tipo_utilizador="Aluno"
+        )
         db.session.add(user)
         db.session.commit()
     # guardar em g se quisesses, mas para simplificar só usamos query no momento
@@ -52,6 +63,7 @@ def index():
     categorias = Categoria.query.all()
     return render_template("index.html", imagens=imagens, categorias=categorias)
 
+
 @app.route("/imagem/<int:imagem_id>")
 def imagem_detalhe(imagem_id):
     img = Imagem.query.get_or_404(imagem_id)
@@ -59,6 +71,7 @@ def imagem_detalhe(imagem_id):
     reacoes = Reacao.query.filter_by(id_imagem=imagem_id).all()
     likes = len([r for r in reacoes if r.tipo == "like"])
     return render_template("imagem_detalhe.html", imagem=img, comentarios=comentarios, likes=likes)
+
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
@@ -92,7 +105,7 @@ def upload():
             titulo=titulo,
             caminho_armazenamento=caminho_url,
             id_utilizador=autor.id,
-            id_categoria=categoria_id if categoria_id else None
+            id_categoria=int(categoria_id) if categoria_id else None
         )
         db.session.add(img)
         db.session.commit()
@@ -102,6 +115,7 @@ def upload():
 
     categorias = Categoria.query.all()
     return render_template("upload.html", categorias=categorias)
+
 
 @app.route("/comentario", methods=["POST"])
 def comentario():
@@ -124,6 +138,7 @@ def comentario():
 
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
 
+
 @app.route("/reacao", methods=["POST"])
 def reacao():
     tipo = request.form.get("tipo")  # like/emoji
@@ -141,6 +156,7 @@ def reacao():
 
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
 
+
 @app.route("/exposicao")
 def exposicao():
     # Top 10 imagens por número de votos
@@ -154,6 +170,7 @@ def exposicao():
         .all()
     )
     return render_template("exposicao.html", top=top)
+
 
 # -------------------------
 #   ADMIN (simples)
@@ -172,6 +189,7 @@ def admin_categorias():
     categorias = Categoria.query.all()
     return render_template("admin_categorias.html", categorias=categorias)
 
+
 @app.route("/admin/exposicoes", methods=["GET", "POST"])
 def admin_exposicoes():
     if request.method == "POST":
@@ -183,6 +201,7 @@ def admin_exposicoes():
             db.session.commit()
     exposicoes = Exposicao.query.all()
     return render_template("admin_exposicoes.html", exposicoes=exposicoes)
+
 
 # -------------------------
 #   GERAR PDF (CloudConvert)
@@ -198,13 +217,18 @@ def gerar_pdf(tipo):
     if tipo not in ["certificado", "catalogo"]:
         return "Tipo inválido", 400
 
+    if not app.config["CLOUDCONVERT_API_KEY"]:
+        # evita crash se não tiver API key no Render
+        return jsonify({"error": "CLOUDCONVERT_API_KEY não configurada"}), 500
+
     # Exemplo: gerar um HTML dinâmico
     if tipo == "certificado":
         user = Utilizador.query.filter_by(email="aluno@exemplo.com").first()
+        nome = user.nome if user else "Participante"
         html_content = f"""
         <html><body>
         <h1>Certificado de Participação</h1>
-        <p>Certificamos que <strong>{user.nome}</strong> participou na plataforma ArteNuvem.</p>
+        <p>Certificamos que <strong>{nome}</strong> participou na plataforma ArteNuvem.</p>
         <p>Data: {datetime.utcnow().strftime('%d/%m/%Y')}</p>
         </body></html>
         """
@@ -253,14 +277,11 @@ def gerar_pdf(tipo):
     # Para simplificar, devolvo só o link:
     return jsonify({"pdf_url": download_url})
 
+
 # -------------------------
-#   MAIN
+#   MAIN (uso local)
 # -------------------------
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
-
-
-

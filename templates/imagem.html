@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="imagem-detalhe">
+    <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}">
+    <h2>{{ imagem.titulo }}</h2>
+    <p>Autor ID: {{ imagem.id_utilizador }}</p>
+
+    {% if imagem.categoria_obj %}
+        <p>Categoria: <span class="badge">{{ imagem.categoria_obj.nome }}</span></p>
+    {% endif %}
+
+    <div class="reacoes">
+        <form method="post" action="{{ url_for('reacao') }}">
+            <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+            <button name="tipo" value="like">👍 Like ({{ likes }})</button>
+        </form>
+    </div>
+
+    <section class="comentarios">
+        <h3>Comentários</h3>
+        {% for c in comentarios %}
+          <div class="comentario">
+              <p>{{ c.texto }}</p>
+              <small>{{ c.data.strftime('%d/%m/%Y %H:%M') }}</small>
+          </div>
+        {% else %}
+          <p>Sem comentários ainda.</p>
+        {% endfor %}
+
+        <form method="post" action="{{ url_for('comentario') }}" class="form-comentario">
+            <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+            <textarea name="texto" maxlength="140" placeholder="Escreve um comentário curto..." required></textarea>
+            <button type="submit">Comentar</button>
+        </form>
+    </section>
+</article>
+{% endblock %}

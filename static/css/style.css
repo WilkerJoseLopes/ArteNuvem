@@ -327,3 +327,44 @@ button:hover {
         top: 60px;
     }
 }
+.search-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.search-form input[type="text"]{
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    min-width: 240px;
+}
+.search-form select {
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+.search-form button {
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+@media (max-width: 800px){
+    .form-row { grid-template-columns: 1fr; }
+}
+.section-fotos { margin-bottom: 1.5rem; }
+.section-others { margin-top: 1.5rem; }
+

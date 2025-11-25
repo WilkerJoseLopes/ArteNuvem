@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Painel de Administração</h1>
+
+<section class="admin-section">
+    <h2>Categorias</h2>
+    <form method="post" class="form">
+        <input type="hidden" name="tipo_form" value="categoria">
+        <label>Nova categoria</label>
+        <input type="text" name="nome" placeholder="Nome da categoria" required>
+        <button type="submit">Adicionar</button>
+    </form>
+
+    <h3>Existentes</h3>
+    <ul class="lista-simples">
+        {% for c in categorias %}
+            <li>{{ c.nome }}</li>
+        {% else %}
+            <li>Sem categorias definidas.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="admin-section">
+    <h2>Exposições</h2>
+    <form method="post" class="form">
+        <input type="hidden" name="tipo_form" value="exposicao">
+        <label>Nome da Exposição</label>
+        <input type="text" name="nome" placeholder="Ex: Exposição de Maio" required>
+
+        <label>Mês</label>
+        <input type="text" name="mes" placeholder="Ex: Maio 2025" required>
+
+        <button type="submit">Criar Exposição</button>
+    </form>
+
+    <h3>Existentes</h3>
+    <ul class="lista-simples">
+        {% for e in exposicoes %}
+            <li>{{ e.nome }} — {{ e.mes }}</li>
+        {% else %}
+            <li>Sem exposições registadas.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

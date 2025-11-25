@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Exposição do Mês</h1>
+
+<div class="actions-row">
+    <button type="button" onclick="alert('Função de PDF ainda em desenvolvimento.')">
+        📄 Gerar catálogo (PDF)
+    </button>
+    <button type="button" onclick="alert('Função de certificado ainda em desenvolvimento.')">
+        📜 Gerar certificado (PDF)
+    </button>
+</div>
+
+{% if top %}
+<div class="grid">
+    {% for img, votos in top %}
+    <div class="card">
+        <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+        <div class="card-body">
+            <h3>{{ img.titulo }}</h3>
+            <p>Autor ID: {{ img.id_utilizador }}</p>
+            <p>Votos: {{ votos }}</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>A exposição do mês será anunciada brevemente.</p>
+{% endif %}
+{% endblock %}

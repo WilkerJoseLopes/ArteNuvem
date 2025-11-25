@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Galeria</h1>
+
+<form method="get" class="filter-form">
+    <label for="categoria">Filtrar por categoria:</label>
+    <select id="categoria" name="categoria" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for c in categorias %}
+            <option value="{{ c.id }}" {% if request.args.get('categoria')|int == c.id %}selected{% endif %}>
+                {{ c.nome }}
+            </option>
+        {% endfor %}
+    </select>
+</form>
+
+<div class="grid">
+    {% for img in imagens %}
+    <a class="card" href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+        <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+        <div class="card-body">
+            <h3>{{ img.titulo }}</h3>
+            <p>Autor ID: {{ img.id_utilizador }}</p>
+            {% if img.categoria_obj %}
+                <span class="badge">{{ img.categoria_obj.nome }}</span>
+            {% endif %}
+        </div>
+    </a>
+    {% else %}
+        <p>Sem imagens ainda. Sê o primeiro a enviar!</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -4,3 +4,7 @@ psycopg2-binary
 python-dotenv
 cloudconvert
 gunicorn
+openai>=1.0.0
+numpy
+scikit-learn
+

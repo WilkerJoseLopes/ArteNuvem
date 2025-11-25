@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <title>ArteNuvem</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='imgICO/icone.png') }}" type="image/png">
+    <!-- css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header class="topbar">
+    <div class="logo-area" onclick="window.location='{{ url_for('index') }}'">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="ArteNuvem" class="logo-img">
+        <span class="logo-text">ArteNuvem</span>
+    </div>
+
+    <div class="topbar-right">
+        <button class="icon-btn theme-toggle" onclick="toggleTheme()" title="Trocar tema">
+            🌙
+        </button>
+
+        <button class="icon-btn profile-btn" title="Perfil (futuro Google Auth)">
+            👤
+        </button>
+
+        <button class="icon-btn hamburger" onclick="toggleMenu()" title="Menu">
+            ☰
+        </button>
+    </div>
+</header>
+
+<!-- Botão + central (upload) -->
+<a href="{{ url_for('upload') }}" class="fab-plus" title="Enviar arte">+</a>
+
+<!-- Menu hambúrguer -->
+<nav class="mobile-menu" id="mobileMenu">
+    <a href="{{ url_for('index') }}">Início</a>
+    <a href="{{ url_for('exposicao') }}">Exposição do Mês</a>
+    <a href="{{ url_for('upload') }}">Enviar Arte</a>
+    <a href="{{ url_for('admin') }}">Admin</a>
+    <span class="mobile-menu-footer">Login Google Auth em desenvolvimento</span>
+</nav>
+
+<main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<footer>
+    <small>ArteNuvem &copy; 2025 — Projeto académico</small>
+</footer>
+
+<script>
+  // tema dark/light
+  function setTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('theme', theme);
+    const btn = document.querySelector('.theme-toggle');
+    if (btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.dataset.theme || 'dark';
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  }
+
+  (function () {
+    const saved = localStorage.getItem('theme') || 'dark';
+    setTheme(saved);
+  })();
+
+  // menu hamburguer
+  function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.toggle('open');
+  }
+</script>
+</body>
+</html>

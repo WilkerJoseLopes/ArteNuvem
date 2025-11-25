@@ -1,22 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Enviar nova arte</h1>
-
+<h1>Publicar imagem</h1>
 <form method="post" enctype="multipart/form-data" class="form">
-    <label>Ficheiro (JPG/PNG)</label>
-    <input type="file" name="ficheiro" required>
-
-    <label>Título</label>
-    <input type="text" name="titulo" required>
-
-    <label>Categoria</label>
-    <select name="categoria">
-        <option value="">Selecione...</option>
-        {% for c in categorias %}
-            <option value="{{ c.id }}">{{ c.nome }}</option>
-        {% endfor %}
-    </select>
-
+    <div class="form-row">
+        <div>
+            <label>Ficheiro (JPG/PNG)</label>
+            <input type="file" name="ficheiro" required>
+        </div>
+        <div>
+            <label>Título</label>
+            <input type="text" name="titulo" required>
+            <label>Categoria</label>
+            <select name="categoria">
+                <option value="">Sem filtro</option>
+                {% for c in categorias %}
+                    <option value="{{ c.id }}">{{ c.nome }}</option>
+                {% endfor %}
+            </select>
+            <label>Tags (separadas por vírgula)</label>
+            <input type="text" name="tags" placeholder="ex: natureza, noite, macro">
+        </div>
+    </div>
     <button type="submit">Publicar</button>
 </form>
 {% endblock %}

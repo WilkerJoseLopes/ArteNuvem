@@ -4,8 +4,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from config import Config
 from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao, Voto
-from cloudconvert_service import html_para_pdf
-from sqlalchemy import desc
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -166,18 +164,10 @@ def reacao():
 
 @app.route("/exposicao")
 def exposicao():
-    top = (
-        db.session.query(Imagem, db.func.count(Voto.id).label("total_votos"))
-        .outerjoin(Voto, Voto.id_imagem == Imagem.id)
-        .group_by(Imagem.id)
-        .order_by(db.desc("total_votos"))
-        .limit(10)
-        .all()
-    )
-    return render_template("exposicao.html", top=top)
+    exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
+    return render_template("exposicao.html", exposicoes=exposicoes)
 
 
-@app.route("/admin", methods=["GET", "POST"])
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
     if request.method == "POST":
@@ -194,23 +184,8 @@ def admin():
         elif action == "create_exposicao":
             nome = request.form.get("nome")
             mes = request.form.get("mes")
-            ativo = bool(request.form.get("ativo"))
-            usar_tags = bool(request.form.get("usar_tags"))
-            usar_categorias = bool(request.form.get("usar_categorias"))
-            tags_filtro = request.form.get("tags_filtro") or None
-            categorias_ids_list = request.form.getlist("categorias_ids")
-            categorias_ids = ",".join(categorias_ids_list) if categorias_ids_list else None
-
             if nome and mes:
-                e = Exposicao(
-                    nome=nome,
-                    mes=mes,
-                    ativo=ativo,
-                    usar_tags=usar_tags,
-                    usar_categorias=usar_categorias,
-                    tags_filtro=tags_filtro,
-                    categorias_ids=categorias_ids,
-                )
+                e = Exposicao(nome=nome, mes=mes)
                 db.session.add(e)
                 db.session.commit()
                 flash("Exposição criada.", "success")
@@ -219,14 +194,10 @@ def admin():
             exposicao_id = request.form.get("exposicao_id", type=int)
             e = Exposicao.query.get(exposicao_id)
             if e:
-                e.nome = request.form.get("nome") or e.nome
-                e.mes = request.form.get("mes") or e.mes
-                e.ativo = bool(request.form.get("ativo"))
-                e.usar_tags = bool(request.form.get("usar_tags"))
-                e.usar_categorias = bool(request.form.get("usar_categorias"))
-                e.tags_filtro = request.form.get("tags_filtro") or None
-                categorias_ids_list = request.form.getlist("categorias_ids")
-                e.categorias_ids = ",".join(categorias_ids_list) if categorias_ids_list else None
+                novo_nome = request.form.get("nome") or e.nome
+                novo_mes = request.form.get("mes") or e.mes
+                e.nome = novo_nome
+                e.mes = novo_mes
                 db.session.commit()
                 flash("Exposição atualizada.", "success")
 
@@ -243,41 +214,6 @@ def admin():
     return render_template("admin.html", categorias=categorias, exposicoes=exposicoes)
 
 
-
-@app.route("/certificado/<int:user_id>")
-def gerar_certificado(user_id):
-    user = Utilizador.query.get_or_404(user_id)
-
-    html_content = render_template("certificado.html", user=user)
-    html_path = os.path.join(TEMP_FOLDER, f"certificado_{user.id}.html")
-    pdf_path = os.path.join(PDF_FOLDER, f"certificado_{user.id}.pdf")
-
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    from cloudconvert_service import html_para_pdf
-    html_para_pdf(html_path, pdf_path)
-
-    return redirect("/static/pdf/certificado_" + str(user.id) + ".pdf")
-
-
-@app.route("/catalogo")
-def gerar_catalogo():
-    top_imagens = Imagem.query.order_by(Imagem.data_upload.desc()).limit(20).all()
-
-    html_content = render_template("catalogo.html", imagens=top_imagens)
-    html_path = os.path.join(TEMP_FOLDER, "catalogo.html")
-    pdf_path = os.path.join(PDF_FOLDER, "catalogo.pdf")
-
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    from cloudconvert_service import html_para_pdf
-    html_para_pdf(html_path, pdf_path)
-
-    return redirect("/static/pdf/catalogo.pdf")
-
-@app.route("/exportar_exposicao", methods=["GET", "POST"])
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
     exposicoes = Exposicao.query.all()
@@ -311,6 +247,7 @@ def exportar_exposicao():
                 with open(html_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
 
+                from cloudconvert_service import html_para_pdf
                 html_para_pdf(html_path, pdf_path)
                 pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_id}.pdf"
 
@@ -322,10 +259,42 @@ def exportar_exposicao():
         top=top,
     )
 
+
+@app.route("/certificado/<int:user_id>")
+def gerar_certificado(user_id):
+    user = Utilizador.query.get_or_404(user_id)
+
+    html_content = render_template("certificado.html", user=user)
+    html_path = os.path.join(TEMP_FOLDER, f"certificado_{user.id}.html")
+    pdf_path = os.path.join(PDF_FOLDER, f"certificado_{user.id}.pdf")
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    from cloudconvert_service import html_para_pdf
+    html_para_pdf(html_path, pdf_path)
+
+    return redirect("/static/pdf/certificado_" + str(user.id) + ".pdf")
+
+
+@app.route("/catalogo")
+def gerar_catalogo():
+    top_imagens = Imagem.query.order_by(Imagem.data_upload.desc()).limit(20).all()
+
+    html_content = render_template("catalogo.html", imagens=top_imagens, exposicao=None)
+    html_path = os.path.join(TEMP_FOLDER, "catalogo.html")
+    pdf_path = os.path.join(PDF_FOLDER, "catalogo.pdf")
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    from cloudconvert_service import html_para_pdf
+    html_para_pdf(html_path, pdf_path)
+
+    return redirect("/static/pdf/catalogo.pdf")
+
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
-
-

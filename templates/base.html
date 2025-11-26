@@ -19,9 +19,13 @@
             <input type="text" name="q" placeholder="Pesquisar títulos, tags..." value="{{ query_text if query_text is defined else '' }}">
             <select name="categoria" onchange="this.form.submit()">
                 <option value="">Todos</option>
-                {% for c in categorias %}
-                    <option value="{{ c.id }}" {% if selected_categoria and selected_categoria==c.id %}selected{% endif %}>{{ c.nome }}</option>
-                {% endfor %}
+                {% if categorias is defined %}
+                    {% for c in categorias %}
+                        <option value="{{ c.id }}" {% if selected_categoria is defined and selected_categoria==c.id %}selected{% endif %}>
+                            {{ c.nome }}
+                        </option>
+                    {% endfor %}
+                {% endif %}
             </select>
             <button type="submit">🔎</button>
         </form>
@@ -38,13 +42,10 @@
     <a href="{{ url_for('index') }}">Início</a>
     <a href="{{ url_for('exposicao') }}">Exposição do Mês</a>
     <a href="{{ url_for('publicar') }}">Publicar imagem</a>
-    <a href="{{ url_for('exportar_exposicao') }}">Exportar PDF</a>
+    <a href="{{ url_for('exportar_exposicao') }}">Exportar Exposição (PDF)</a>
     <a href="{{ url_for('admin') }}">Admin</a>
     <span class="mobile-menu-footer">Login Google Auth em desenvolvimento</span>
 </nav>
-
-
-
 
 <main>
     {% with messages = get_flashed_messages(with_categories=true) %}

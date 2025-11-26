@@ -170,4 +170,25 @@ def gerar_certificado(user_id):
     # 3. Mostrar PDF ao utilizador
     return redirect("/" + pdf_path)
 
+@app.route("/catalogo")
+def gerar_catalogo():
+    top_imagens = Imagem.query.order_by(Imagem.data_upload.desc()).limit(20).all()
+
+    # 1. Gerar HTML temporário
+    html_content = render_template("catalogo.html", imagens=top_imagens)
+    html_path = "temp/catalogo.html"
+    pdf_path = "static/pdf/catalogo.pdf"
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    # 2. Converter HTML → PDF via CloudConvert
+    from cloudconvert_service import html_para_pdf
+    html_para_pdf(html_path, pdf_path)
+
+    # 3. Disponibilizar PDF
+    return redirect("/" + pdf_path)
+
+
+
 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Exportar Top 10 da Exposição</h1>
+<h1>Exportar Exposição</h1>
 
 <form method="post" class="form">
     <label>Selecionar exposição</label>
@@ -13,7 +13,7 @@
             </option>
         {% endfor %}
     </select>
-    <button type="submit">Exportar Top 10 (PDF)</button>
+    <button type="submit">Exportar PDF</button>
 </form>
 
 {% if pdf_url %}

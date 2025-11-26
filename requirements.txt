@@ -3,9 +3,8 @@ flask_sqlalchemy
 psycopg2-binary
 python-dotenv
 cloudconvert
+requests
 gunicorn
 openai>=1.0.0
 numpy
 scikit-learn
-
-

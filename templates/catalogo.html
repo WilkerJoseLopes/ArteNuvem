@@ -8,7 +8,12 @@
     </style>
 </head>
 <body>
-    <h1>Catálogo de Imagens</h1>
+    <h1>
+        Catálogo de Imagens
+        {% if exposicao %}
+            — {{ exposicao.nome }} ({{ exposicao.mes }})
+        {% endif %}
+    </h1>
 
     {% for img in imagens %}
     <div class="img-box">

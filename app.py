@@ -4,6 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from config import Config
 from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao, Voto
+from cloudconvert_service import html_para_pdf
+from sqlalchemy import desc
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -233,8 +235,54 @@ def gerar_catalogo():
 
     return redirect("/static/pdf/catalogo.pdf")
 
+@app.route("/exportar_exposicao", methods=["GET", "POST"])
+def exportar_exposicao():
+    exposicoes = Exposicao.query.all()
+    pdf_url = None
+    exposicao_selecionada = None
+    top = []
+
+    if request.method == "POST":
+        exposicao_id = request.form.get("exposicao_id", type=int)
+        if exposicao_id:
+            exposicao_selecionada = Exposicao.query.get(exposicao_id)
+            if exposicao_selecionada:
+                top = (
+                    db.session.query(Imagem, db.func.count(Voto.id).label("total_votos"))
+                    .join(Voto, Voto.id_imagem == Imagem.id)
+                    .filter(Voto.id_exposicao == exposicao_id)
+                    .group_by(Imagem.id)
+                    .order_by(db.desc("total_votos"))
+                    .limit(10)
+                    .all()
+                )
+
+                imagens_top = [img for img, votos in top]
+
+                html_content = render_template(
+                    "catalogo.html",
+                    imagens=imagens_top,
+                    exposicao=exposicao_selecionada
+                )
+                html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_id}.html")
+                pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_id}.pdf")
+
+                with open(html_path, "w", encoding="utf-8") as f:
+                    f.write(html_content)
+
+                html_para_pdf(html_path, pdf_path)
+                pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_id}.pdf"
+
+    return render_template(
+        "exportar_exposicao.html",
+        exposicoes=exposicoes,
+        pdf_url=pdf_url,
+        exposicao=exposicao_selecionada,
+        top=top,
+    )
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+

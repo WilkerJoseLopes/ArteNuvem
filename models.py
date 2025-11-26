@@ -74,6 +74,12 @@ class Exposicao(db.Model):
     nome = db.Column("Nome", db.String(150), nullable=False)
     mes = db.Column("Mes", db.String(20), nullable=False)
     imagem_destaque = db.Column("Imagem_Destaque", db.String(500), nullable=True)
+    ativo = db.Column("Ativo", db.Boolean, default=True)
+    usar_tags = db.Column("Usar_Tags", db.Boolean, default=False)
+    usar_categorias = db.Column("Usar_Categorias", db.Boolean, default=True)
+    tags_filtro = db.Column("Tags_Filtro", db.String(300), nullable=True)
+    categorias_ids = db.Column("Categorias_Ids", db.String(300), nullable=True)
+
 
 
 class Voto(db.Model):

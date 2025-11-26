@@ -25,38 +25,10 @@
     <h2>Criar nova exposição</h2>
     <form method="post" class="form">
         <input type="hidden" name="action" value="create_exposicao">
-
         <label>Nome da Exposição</label>
         <input type="text" name="nome" placeholder="Ex: Exposição de Maio" required>
-
         <label>Mês</label>
         <input type="text" name="mes" placeholder="Ex: Maio 2025" required>
-
-        <label>
-            <input type="checkbox" name="ativo" checked>
-            Exposição ativa
-        </label>
-
-        <label>
-            <input type="checkbox" name="usar_tags">
-            Selecionar imagens por tags
-        </label>
-
-        <label>Tags (separadas por vírgula)</label>
-        <input type="text" name="tags_filtro" placeholder="ex: natureza, noite, macro">
-
-        <label>
-            <input type="checkbox" name="usar_categorias" checked>
-            Selecionar imagens por categorias
-        </label>
-
-        <label>Categorias incluídas</label>
-        <select name="categorias_ids" multiple>
-            {% for c in categorias %}
-                <option value="{{ c.id }}">{{ c.nome }}</option>
-            {% endfor %}
-        </select>
-
         <button type="submit">Criar Exposição</button>
     </form>
 </section>
@@ -75,32 +47,6 @@
 
             <label>Mês</label>
             <input type="text" name="mes" value="{{ e.mes }}">
-
-            <label>
-                <input type="checkbox" name="ativo" {% if e.ativo %}checked{% endif %}>
-                Ativa
-            </label>
-
-            <label>
-                <input type="checkbox" name="usar_tags" {% if e.usar_tags %}checked{% endif %}>
-                Usar tags
-            </label>
-
-            <label>Tags (separadas por vírgula)</label>
-            <input type="text" name="tags_filtro" value="{{ e.tags_filtro or '' }}">
-
-            <label>
-                <input type="checkbox" name="usar_categorias" {% if e.usar_categorias %}checked{% endif %}>
-                Usar categorias
-            </label>
-
-            <label>Categorias incluídas</label>
-            <select name="categorias_ids" multiple>
-                {% set selecionadas = (e.categorias_ids or '').split(',') %}
-                {% for c in categorias %}
-                    <option value="{{ c.id }}" {% if c.id|string in selecionadas %}selected{% endif %}>{{ c.nome }}</option>
-                {% endfor %}
-            </select>
 
             <button type="submit">Guardar alterações</button>
         </form>

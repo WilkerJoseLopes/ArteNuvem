@@ -278,6 +278,7 @@ def gerar_catalogo():
     return redirect("/static/pdf/catalogo.pdf")
 
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
+@app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
     exposicoes = Exposicao.query.all()
     pdf_url = None
@@ -299,12 +300,10 @@ def exportar_exposicao():
                     .all()
                 )
 
-                imagens_top = [img for img, votos in top]
-
                 html_content = render_template(
                     "catalogo.html",
-                    imagens=imagens_top,
-                    exposicao=exposicao_selecionada
+                    exposicao=exposicao_selecionada,
+                    top=top
                 )
                 html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_id}.html")
                 pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_id}.pdf")
@@ -327,5 +326,6 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 

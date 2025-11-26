@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
+from sqlalchemy import func, desc
 from config import Config
 from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao, Voto
 
@@ -36,7 +37,11 @@ def allowed_file(filename: str) -> bool:
 def fake_login():
     user = Utilizador.query.filter_by(email="aluno@exemplo.com").first()
     if not user:
-        user = Utilizador(nome="Aluno Exemplo", email="aluno@exemplo.com", tipo_utilizador="Aluno")
+        user = Utilizador(
+            nome="Aluno Exemplo",
+            email="aluno@exemplo.com",
+            tipo_utilizador="Aluno"
+        )
         db.session.add(user)
         db.session.commit()
 
@@ -56,18 +61,20 @@ def index():
         query = query.filter_by(id_categoria=categoria_id)
     if q:
         like = f"%{q}%"
-        query = query.filter((Imagem.titulo.ilike(like)) | (Imagem.categoria_texto.ilike(like)))
+        query = query.filter(
+            (Imagem.titulo.ilike(like)) |
+            (Imagem.categoria_texto.ilike(like)) |
+            (Imagem.tags.ilike(like))
+        )
 
     imagens = query.order_by(Imagem.data_upload.desc()).all()
     categorias = Categoria.query.all()
-    other_cats = [c for c in categorias if c.nome != "Fotos"]
 
     return render_template(
         "index.html",
         fotos=fotos,
         imagens=imagens,
         categorias=categorias,
-        other_cats=other_cats,
         query_text=q,
         selected_categoria=categoria_id,
     )
@@ -79,7 +86,16 @@ def imagem_detalhe(imagem_id: int):
     comentarios = Comentario.query.filter_by(id_imagem=imagem_id).order_by(Comentario.data.desc()).all()
     reacoes = Reacao.query.filter_by(id_imagem=imagem_id).all()
     likes = len([r for r in reacoes if r.tipo == "like"])
-    return render_template("imagem.html", imagem=img, comentarios=comentarios, likes=likes)
+    categorias = Categoria.query.all()
+    return render_template(
+        "imagem.html",
+        imagem=img,
+        comentarios=comentarios,
+        likes=likes,
+        categorias=categorias,
+        query_text="",
+        selected_categoria=None,
+    )
 
 
 @app.route("/publicar", methods=["GET", "POST"])
@@ -124,7 +140,30 @@ def publicar():
         return redirect(url_for("index"))
 
     categorias = Categoria.query.all()
-    return render_template("upload.html", categorias=categorias)
+    return render_template("upload.html", categorias=categorias, query_text="", selected_categoria=None)
+
+
+@app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
+def apagar_imagem(imagem_id: int):
+    img = Imagem.query.get_or_404(imagem_id)
+
+    Comentario.query.filter_by(id_imagem=imagem_id).delete()
+    Reacao.query.filter_by(id_imagem=imagem_id).delete()
+    Voto.query.filter_by(id_imagem=imagem_id).delete()
+
+    caminho_relativo = img.caminho_armazenamento.lstrip("/")
+    caminho_ficheiro = os.path.join(app.root_path, caminho_relativo)
+
+    db.session.delete(img)
+    db.session.commit()
+
+    try:
+        os.remove(caminho_ficheiro)
+    except FileNotFoundError:
+        pass
+
+    flash("Imagem apagada.", "success")
+    return redirect(url_for("index"))
 
 
 @app.route("/comentario", methods=["POST"])
@@ -165,7 +204,14 @@ def reacao():
 @app.route("/exposicao")
 def exposicao():
     exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
-    return render_template("exposição.html", exposicoes=exposicoes)
+    categorias = Categoria.query.all()
+    return render_template(
+        "exposição.html",
+        exposicoes=exposicoes,
+        categorias=categorias,
+        query_text="",
+        selected_categoria=None,
+    )
 
 
 @app.route("/admin", methods=["GET", "POST"])
@@ -211,12 +257,19 @@ def admin():
 
     categorias = Categoria.query.all()
     exposicoes = Exposicao.query.all()
-    return render_template("admin.html", categorias=categorias, exposicoes=exposicoes)
+    return render_template(
+        "admin.html",
+        categorias=categorias,
+        exposicoes=exposicoes,
+        query_text="",
+        selected_categoria=None,
+    )
 
 
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
     exposicoes = Exposicao.query.all()
+    categorias = Categoria.query.all()
     pdf_url = None
     exposicao_selecionada = None
     top = []
@@ -227,11 +280,11 @@ def exportar_exposicao():
             exposicao_selecionada = Exposicao.query.get(exposicao_id)
             if exposicao_selecionada:
                 top = (
-                    db.session.query(Imagem, db.func.count(Voto.id).label("total_votos"))
+                    db.session.query(Imagem, func.count(Voto.id).label("total_votos"))
                     .join(Voto, Voto.id_imagem == Imagem.id)
                     .filter(Voto.id_exposicao == exposicao_id)
                     .group_by(Imagem.id)
-                    .order_by(db.desc("total_votos"))
+                    .order_by(desc("total_votos"))
                     .limit(10)
                     .all()
                 )
@@ -258,6 +311,9 @@ def exportar_exposicao():
         pdf_url=pdf_url,
         exposicao=exposicao_selecionada,
         top=top,
+        categorias=categorias,
+        query_text="",
+        selected_categoria=None,
     )
 
 

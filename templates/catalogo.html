@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <style>
-        body { font-family: Arial; }
-        .img-box { margin: 20px; text-align: center; }
-        img { width: 400px; border-radius: 10px; }
+        body { font-family: Arial, sans-serif; }
+        h1 { text-align: center; }
+        .item { margin: 20px 0; text-align: center; }
+        .item img { width: 400px; border-radius: 10px; }
+        .pos { font-size: 20px; font-weight: bold; }
+        .votos { font-size: 14px; color: #555; }
     </style>
 </head>
 <body>
@@ -15,11 +19,24 @@
         {% endif %}
     </h1>
 
-    {% for img in imagens %}
-    <div class="img-box">
-        <h2>{{ img.titulo }}</h2>
-        <img src="{{ img.caminho_armazenamento }}">
-    </div>
-    {% endfor %}
+    {% if top %}
+        {% for img, votos in top %}
+        <div class="item">
+            <div class="pos">{{ loop.index }}º lugar</div>
+            <h2>{{ img.titulo }}</h2>
+            <div class="votos">Votos: {{ votos }}</div>
+            <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+        </div>
+        {% endfor %}
+    {% elif imagens %}
+        {% for img in imagens %}
+        <div class="item">
+            <h2>{{ img.titulo }}</h2>
+            <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>Sem imagens para mostrar.</p>
+    {% endif %}
 </body>
 </html>

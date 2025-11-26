@@ -149,3 +149,25 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
+
+@app.route("/certificado/<int:user_id>")
+def gerar_certificado(user_id):
+    user = Utilizador.query.get_or_404(user_id)
+
+    # 1. Renderizar HTML para um ficheiro temporário
+    html_content = render_template("certificado.html", user=user)
+    html_path = f"temp/certificado_{user.id}.html"
+    pdf_path = f"static/pdf/certificado_{user.id}.pdf"
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    # 2. Converter HTML → PDF usando o serviço externo CloudConvert
+    from cloudconvert_service import html_para_pdf
+    html_para_pdf(html_path, pdf_path)
+
+    # 3. Mostrar PDF ao utilizador
+    return redirect("/" + pdf_path)
+
+

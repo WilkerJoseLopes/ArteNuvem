@@ -165,7 +165,7 @@ def reacao():
 @app.route("/exposicao")
 def exposicao():
     exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
-    return render_template("exposicao.html", exposicoes=exposicoes)
+    return render_template("exposição.html", exposicoes=exposicoes)
 
 
 @app.route("/admin", methods=["GET", "POST"])
@@ -236,6 +236,8 @@ def exportar_exposicao():
                     .all()
                 )
 
+                from cloudconvert_service import html_para_pdf
+
                 html_content = render_template(
                     "catalogo.html",
                     exposicao=exposicao_selecionada,
@@ -247,7 +249,6 @@ def exportar_exposicao():
                 with open(html_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
 
-                from cloudconvert_service import html_para_pdf
                 html_para_pdf(html_path, pdf_path)
                 pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_id}.pdf"
 
@@ -260,35 +261,19 @@ def exportar_exposicao():
     )
 
 
-@app.route("/certificado/<int:user_id>")
-def gerar_certificado(user_id):
-    user = Utilizador.query.get_or_404(user_id)
-
-    html_content = render_template("certificado.html", user=user)
-    html_path = os.path.join(TEMP_FOLDER, f"certificado_{user.id}.html")
-    pdf_path = os.path.join(PDF_FOLDER, f"certificado_{user.id}.pdf")
-
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    from cloudconvert_service import html_para_pdf
-    html_para_pdf(html_path, pdf_path)
-
-    return redirect("/static/pdf/certificado_" + str(user.id) + ".pdf")
-
-
 @app.route("/catalogo")
 def gerar_catalogo():
-    top_imagens = Imagem.query.order_by(Imagem.data_upload.desc()).limit(20).all()
+    imagens = Imagem.query.order_by(Imagem.data_upload.desc()).limit(20).all()
 
-    html_content = render_template("catalogo.html", imagens=top_imagens, exposicao=None)
+    from cloudconvert_service import html_para_pdf
+
+    html_content = render_template("catalogo.html", imagens=imagens, exposicao=None)
     html_path = os.path.join(TEMP_FOLDER, "catalogo.html")
     pdf_path = os.path.join(PDF_FOLDER, "catalogo.pdf")
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    from cloudconvert_service import html_para_pdf
     html_para_pdf(html_path, pdf_path)
 
     return redirect("/static/pdf/catalogo.pdf")

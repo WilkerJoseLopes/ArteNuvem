@@ -6,13 +6,22 @@
     <h2>Fotos</h2>
     <div class="grid">
         {% for img in fotos %}
-        <a class="card" href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-            <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+        <div class="card">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+            </a>
             <div class="card-body">
                 <h3>{{ img.titulo }}</h3>
+                <p>ID: {{ img.id }}</p>
                 <p>Autor ID: {{ img.id_utilizador }}</p>
+                {% if img.categoria_texto %}
+                    <span class="badge">{{ img.categoria_texto }}</span>
+                {% endif %}
+                <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
+                    <button type="submit">Apagar</button>
+                </form>
             </div>
-        </a>
+        </div>
         {% else %}
         <p>Sem fotos ainda.</p>
         {% endfor %}
@@ -20,19 +29,25 @@
 </section>
 
 <section class="section-others">
-    <h2>Outras imagens</h2>
+    <h2>Todas as imagens</h2>
     <div class="grid">
         {% for img in imagens %}
-        <a class="card" href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-            <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+        <div class="card">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+            </a>
             <div class="card-body">
                 <h3>{{ img.titulo }}</h3>
+                <p>ID: {{ img.id }}</p>
                 <p>Autor ID: {{ img.id_utilizador }}</p>
-                {% if img.categoria_obj %}
-                    <span class="badge">{{ img.categoria_obj.nome }}</span>
+                {% if img.categoria_texto %}
+                    <span class="badge">{{ img.categoria_texto }}</span>
                 {% endif %}
+                <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
+                    <button type="submit">Apagar</button>
+                </form>
             </div>
-        </a>
+        </div>
         {% else %}
         <p>Sem imagens para mostrar.</p>
         {% endfor %}

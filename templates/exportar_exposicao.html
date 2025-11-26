@@ -1,1 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Exportar Top 10 da Exposição</h1>
 
+<form method="post" class="form">
+    <label>Selecionar exposição</label>
+    <select name="exposicao_id" required>
+        <option value="">Escolhe uma exposição</option>
+        {% for e in exposicoes %}
+            <option value="{{ e.id }}"
+                {% if exposicao and exposicao.id == e.id %}selected{% endif %}>
+                {{ e.nome }} — {{ e.mes }}
+            </option>
+        {% endfor %}
+    </select>
+    <button type="submit">Exportar Top 10 (PDF)</button>
+</form>
+
+{% if pdf_url %}
+    <div class="export-result">
+        <p>PDF gerado para a exposição <strong>{{ exposicao.nome }}</strong>.</p>
+        <p><a href="{{ pdf_url }}" target="_blank">Abrir PDF</a></p>
+    </div>
+
+    {% if top %}
+        <h2>Top 10 imagens</h2>
+        <div class="grid">
+            {% for img, votos in top %}
+            <div class="card">
+                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+                <div class="card-body">
+                    <h3>{{ img.titulo }}</h3>
+                    <p>Autor ID: {{ img.id_utilizador }}</p>
+                    <p>Votos: {{ votos }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endif %}
+{% endblock %}

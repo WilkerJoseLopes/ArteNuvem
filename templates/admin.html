@@ -5,7 +5,7 @@
 <section class="admin-section">
     <h2>Categorias</h2>
     <form method="post" class="form">
-        <input type="hidden" name="tipo_form" value="categoria">
+        <input type="hidden" name="action" value="create_categoria">
         <label>Nova categoria</label>
         <input type="text" name="nome" placeholder="Nome da categoria" required>
         <button type="submit">Adicionar</button>
@@ -22,25 +22,97 @@
 </section>
 
 <section class="admin-section">
-    <h2>Exposições</h2>
+    <h2>Criar nova exposição</h2>
     <form method="post" class="form">
-        <input type="hidden" name="tipo_form" value="exposicao">
+        <input type="hidden" name="action" value="create_exposicao">
+
         <label>Nome da Exposição</label>
         <input type="text" name="nome" placeholder="Ex: Exposição de Maio" required>
 
         <label>Mês</label>
         <input type="text" name="mes" placeholder="Ex: Maio 2025" required>
 
+        <label>
+            <input type="checkbox" name="ativo" checked>
+            Exposição ativa
+        </label>
+
+        <label>
+            <input type="checkbox" name="usar_tags">
+            Selecionar imagens por tags
+        </label>
+
+        <label>Tags (separadas por vírgula)</label>
+        <input type="text" name="tags_filtro" placeholder="ex: natureza, noite, macro">
+
+        <label>
+            <input type="checkbox" name="usar_categorias" checked>
+            Selecionar imagens por categorias
+        </label>
+
+        <label>Categorias incluídas</label>
+        <select name="categorias_ids" multiple>
+            {% for c in categorias %}
+                <option value="{{ c.id }}">{{ c.nome }}</option>
+            {% endfor %}
+        </select>
+
         <button type="submit">Criar Exposição</button>
     </form>
+</section>
 
-    <h3>Existentes</h3>
-    <ul class="lista-simples">
-        {% for e in exposicoes %}
-            <li>{{ e.nome }} — {{ e.mes }}</li>
-        {% else %}
-            <li>Sem exposições registadas.</li>
-        {% endfor %}
-    </ul>
+<section class="admin-section">
+    <h2>Exposições existentes</h2>
+
+    {% for e in exposicoes %}
+    <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+        <form method="post" class="form">
+            <input type="hidden" name="action" value="update_exposicao">
+            <input type="hidden" name="exposicao_id" value="{{ e.id }}">
+
+            <label>Nome</label>
+            <input type="text" name="nome" value="{{ e.nome }}">
+
+            <label>Mês</label>
+            <input type="text" name="mes" value="{{ e.mes }}">
+
+            <label>
+                <input type="checkbox" name="ativo" {% if e.ativo %}checked{% endif %}>
+                Ativa
+            </label>
+
+            <label>
+                <input type="checkbox" name="usar_tags" {% if e.usar_tags %}checked{% endif %}>
+                Usar tags
+            </label>
+
+            <label>Tags (separadas por vírgula)</label>
+            <input type="text" name="tags_filtro" value="{{ e.tags_filtro or '' }}">
+
+            <label>
+                <input type="checkbox" name="usar_categorias" {% if e.usar_categorias %}checked{% endif %}>
+                Usar categorias
+            </label>
+
+            <label>Categorias incluídas</label>
+            <select name="categorias_ids" multiple>
+                {% set selecionadas = (e.categorias_ids or '').split(',') %}
+                {% for c in categorias %}
+                    <option value="{{ c.id }}" {% if c.id|string in selecionadas %}selected{% endif %}>{{ c.nome }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit">Guardar alterações</button>
+        </form>
+
+        <form method="post" style="margin-top: 0.5rem;">
+            <input type="hidden" name="action" value="delete_exposicao">
+            <input type="hidden" name="exposicao_id" value="{{ e.id }}">
+            <button type="submit" style="background:#b91c1c;">Apagar exposição</button>
+        </form>
+    </div>
+    {% else %}
+        <p>Sem exposições registadas.</p>
+    {% endfor %}
 </section>
 {% endblock %}

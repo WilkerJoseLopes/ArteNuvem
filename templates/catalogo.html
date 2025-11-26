@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial; }
+        .img-box { margin: 20px; text-align: center; }
+        img { width: 400px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Catálogo de Imagens</h1>
+
+    {% for img in imagens %}
+    <div class="img-box">
+        <h2>{{ img.titulo }}</h2>
+        <img src="{{ img.caminho_armazenamento }}">
+    </div>
+    {% endfor %}
+</body>
+</html>

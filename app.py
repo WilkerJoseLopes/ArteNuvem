@@ -178,28 +178,70 @@ def exposicao():
 
 
 @app.route("/admin", methods=["GET", "POST"])
+@app.route("/admin", methods=["GET", "POST"])
 def admin():
     if request.method == "POST":
-        tipo_form = request.form.get("tipo_form")
-        if tipo_form == "categoria":
+        action = request.form.get("action")
+
+        if action == "create_categoria":
             nome = request.form.get("nome")
             if nome:
                 c = Categoria(nome=nome)
                 db.session.add(c)
                 db.session.commit()
                 flash("Categoria criada.", "success")
-        elif tipo_form == "exposicao":
+
+        elif action == "create_exposicao":
             nome = request.form.get("nome")
             mes = request.form.get("mes")
+            ativo = bool(request.form.get("ativo"))
+            usar_tags = bool(request.form.get("usar_tags"))
+            usar_categorias = bool(request.form.get("usar_categorias"))
+            tags_filtro = request.form.get("tags_filtro") or None
+            categorias_ids_list = request.form.getlist("categorias_ids")
+            categorias_ids = ",".join(categorias_ids_list) if categorias_ids_list else None
+
             if nome and mes:
-                e = Exposicao(nome=nome, mes=mes)
+                e = Exposicao(
+                    nome=nome,
+                    mes=mes,
+                    ativo=ativo,
+                    usar_tags=usar_tags,
+                    usar_categorias=usar_categorias,
+                    tags_filtro=tags_filtro,
+                    categorias_ids=categorias_ids,
+                )
                 db.session.add(e)
                 db.session.commit()
                 flash("Exposição criada.", "success")
 
+        elif action == "update_exposicao":
+            exposicao_id = request.form.get("exposicao_id", type=int)
+            e = Exposicao.query.get(exposicao_id)
+            if e:
+                e.nome = request.form.get("nome") or e.nome
+                e.mes = request.form.get("mes") or e.mes
+                e.ativo = bool(request.form.get("ativo"))
+                e.usar_tags = bool(request.form.get("usar_tags"))
+                e.usar_categorias = bool(request.form.get("usar_categorias"))
+                e.tags_filtro = request.form.get("tags_filtro") or None
+                categorias_ids_list = request.form.getlist("categorias_ids")
+                e.categorias_ids = ",".join(categorias_ids_list) if categorias_ids_list else None
+                db.session.commit()
+                flash("Exposição atualizada.", "success")
+
+        elif action == "delete_exposicao":
+            exposicao_id = request.form.get("exposicao_id", type=int)
+            e = Exposicao.query.get(exposicao_id)
+            if e:
+                db.session.delete(e)
+                db.session.commit()
+                flash("Exposição apagada.", "success")
+
     categorias = Categoria.query.all()
     exposicoes = Exposicao.query.all()
     return render_template("admin.html", categorias=categorias, exposicoes=exposicoes)
+
 
 
 @app.route("/certificado/<int:user_id>")
@@ -285,4 +327,5 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 

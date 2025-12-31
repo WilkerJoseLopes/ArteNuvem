@@ -112,7 +112,8 @@ def publicar():
         ficheiro.save(caminho_local)
         caminho_url = "/" + caminho_local.replace("\\", "/")
 
-        autor = Utilizador.query.filter_by(email="aluno@exemplo.com").first()
+        user = current_user()
+
         categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
 
         img = Imagem(
@@ -166,7 +167,8 @@ def comentario():
         flash("Comentário inválido ou demasiado longo (máx. 140).", "error")
         return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
 
-    user = Utilizador.query.filter_by(email="aluno@exemplo.com").first()
+    user = current_user()
+
 
     c = Comentario(texto=texto, id_imagem=imagem_id, id_utilizador=user.id if user else None)
     db.session.add(c)
@@ -183,7 +185,8 @@ def reacao():
     if not tipo or not imagem_id:
         return redirect(url_for("index"))
 
-    user = Utilizador.query.filter_by(email="aluno@exemplo.com").first()
+    user = current_user()
+
 
     r = Reacao(tipo=tipo, id_imagem=imagem_id, id_utilizador=user.id if user else None)
     db.session.add(r)
@@ -364,12 +367,19 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
+def current_user():
+    uid = session.get("user_id")
+    if uid:
+        return Utilizador.query.get(uid)
+    return None
+
 
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 
 

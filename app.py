@@ -1,5 +1,7 @@
+# :contentReference[oaicite:0]{index=0}
 from datetime import datetime
 import os
+import threading
 from functools import wraps
 
 from flask import (
@@ -69,15 +71,27 @@ def login_required(f):
     return decorated
 
 
-@app.before_first_request
-def criar_tabelas():
-    # Cria tabelas e categorias padrão na primeira request (evita cold-start crash)
-    db.create_all()
-    default = ["Todos", "Fotos", "Desenhos", "Outro"]
-    for nome in default:
-        if not Categoria.query.filter_by(nome=nome).first():
-            db.session.add(Categoria(nome=nome))
-    db.session.commit()
+# Ensure tables and default categories are created once on first requests.
+_tables_lock = threading.Lock()
+
+
+@app.before_request
+def ensure_tables():
+    if app.config.get("TABLES_INITIALIZED"):
+        return
+
+    with _tables_lock:
+        if app.config.get("TABLES_INITIALIZED"):
+            return
+        # Use app_context to be safe when called from before_request
+        with app.app_context():
+            db.create_all()
+            default = ["Todos", "Fotos", "Desenhos", "Outro"]
+            for nome in default:
+                if not Categoria.query.filter_by(nome=nome).first():
+                    db.session.add(Categoria(nome=nome))
+            db.session.commit()
+        app.config["TABLES_INITIALIZED"] = True
 
 
 @app.route("/")
@@ -427,16 +441,24 @@ def login():
 
 @app.route("/login/google/callback")
 def google_callback():
+    # Tenta obter token e userinfo de forma robusta
     token = google.authorize_access_token()
-    # A Authlib normalmente coloca userinfo dentro do token ou faz fetch - alguns providers retornam diretamente
-    user_info = token.get("userinfo") or token.get("id_token") or {}
-    # Se user_info não teve "userinfo", tenta obter via userinfo endpoint via oauth
+    user_info = {}
+
+    # 1) Tentar endpoint /userinfo
+    try:
+        resp = google.get("userinfo")
+        if resp and resp.ok:
+            user_info = resp.json()
+    except Exception:
+        user_info = {}
+
+    # 2) fallback para id_token parsing
     if not user_info:
         try:
             user_info = google.parse_id_token(token)
         except Exception:
-            # última tentativa
-            user_info = {}
+            user_info = token.get("userinfo") or token.get("id_token") or {}
 
     email = user_info.get("email")
     if not email:
@@ -472,4 +494,6 @@ def logout():
 
 
 if __name__ == "__main__":
+    # Nota: em produção, gunicorn vai usar o app. Este run é apenas para testes locais.
     app.run(debug=True)
+

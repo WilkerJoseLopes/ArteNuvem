@@ -1,3 +1,5 @@
+/* :contentReference[oaicite:1]{index=1} */
+/* Theme variables */
 :root {
     --bg: #0f172a;
     --bg-elevated: #020617;
@@ -108,8 +110,9 @@ body {
     padding: 0.5rem 0;
     display: none;
     flex-direction: column;
-    min-width: 180px;
+    min-width: 220px;
     z-index: 30;
+    box-shadow: 0 8px 20px rgba(2,6,23,0.6);
 }
 
 .mobile-menu.open {
@@ -117,14 +120,15 @@ body {
 }
 
 .mobile-menu a {
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1rem;
     text-decoration: none;
     color: var(--text);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    display: block;
 }
 
 .mobile-menu a:hover {
-    background: rgba(148, 163, 184, 0.15);
+    background: rgba(148, 163, 184, 0.08);
 }
 
 .mobile-menu-footer {
@@ -368,3 +372,74 @@ button:hover {
 .section-fotos { margin-bottom: 1.5rem; }
 .section-others { margin-top: 1.5rem; }
 
+/* ======== User / Profile UI ======== */
+
+.user-box {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: transparent;
+    border-radius: 12px;
+    padding: 0.15rem 0.4rem;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.user-email {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* login / link buttons */
+
+.btn-login, .btn-link {
+    color: var(--text);
+    text-decoration: none;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-weight: 600;
+}
+
+.btn-login {
+    background: linear-gradient(90deg, #4f46e5, #6366f1);
+    color: #fff;
+    border: 1px solid rgba(99,102,241,0.12);
+}
+
+.btn-login:hover {
+    opacity: 0.95;
+}
+
+/* small helpers */
+
+.small {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* Accessibility focus states */
+
+a:focus, button:focus, input:focus {
+    outline: 3px solid rgba(99,102,241,0.18);
+    outline-offset: 2px;
+}
+
+/* End of file */

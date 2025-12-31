@@ -74,6 +74,9 @@ def login_required(f):
 # Ensure tables and default categories are created once on first requests.
 _tables_lock = threading.Lock()
 
+@app.context_processor
+def inject_user():
+    return {"current_user": current_user()}
 
 @app.before_request
 def ensure_tables():
@@ -496,4 +499,5 @@ def logout():
 if __name__ == "__main__":
     # Nota: em produção, gunicorn vai usar o app. Este run é apenas para testes locais.
     app.run(debug=True)
+
 

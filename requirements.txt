@@ -9,4 +9,4 @@ openai>=1.0.0
 numpy
 scikit-learn
 authlib
-
+sqlalchemy

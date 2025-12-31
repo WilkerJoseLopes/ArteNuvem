@@ -33,17 +33,6 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@app.before_request
-def fake_login():
-    user = Utilizador.query.filter_by(email="aluno@exemplo.com").first()
-    if not user:
-        user = Utilizador(
-            nome="Aluno Exemplo",
-            email="aluno@exemplo.com",
-            tipo_utilizador="Aluno"
-        )
-        db.session.add(user)
-        db.session.commit()
 
 
 @app.route("/")
@@ -339,3 +328,4 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+

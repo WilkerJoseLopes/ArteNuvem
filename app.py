@@ -8,6 +8,8 @@ from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposi
 from authlib.integrations.flask_client import OAuth
 from flask import session
 
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -373,12 +375,21 @@ def current_user():
         return Utilizador.query.get(uid)
     return None
 
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    user = current_user()
+    if not user or user.email != ADMIN_EMAIL:
+        return redirect(url_for("index"))
+    ...
+
+
 
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 
 

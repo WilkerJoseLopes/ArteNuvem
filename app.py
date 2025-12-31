@@ -23,8 +23,22 @@ from authlib.integrations.flask_client import OAuth
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
+# no início do arquivo app.py, onde tens app = Flask(...)
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# security / sessions
+# no Render o site é https, define cookie seguro e same-site apropriado
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # Lax é ok para OAuth redirects
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+
+# aplica ProxyFix para que Flask reconheça X-Forwarded-Proto/Host (render usa proxy)
+# x_proto=1 e x_host=1 geralmente suficientes
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
 
 db.init_app(app)
 
@@ -499,5 +513,6 @@ def logout():
 if __name__ == "__main__":
     # Nota: em produção, gunicorn vai usar o app. Este run é apenas para testes locais.
     app.run(debug=True)
+
 
 

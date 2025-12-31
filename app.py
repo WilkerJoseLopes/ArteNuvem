@@ -21,6 +21,8 @@ from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposi
 
 from authlib.integrations.flask_client import OAuth
 
+from sqlalchemy import text
+
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
 # no início do arquivo app.py, onde tens app = Flask(...)
@@ -41,6 +43,25 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 
 db.init_app(app)
+
+def ensure_google_columns():
+    with db.engine.begin() as conn:
+        conn.execute(text('''
+            ALTER TABLE utilizador
+            ADD COLUMN IF NOT EXISTS "Google_ID" VARCHAR(200);
+        '''))
+        conn.execute(text('''
+            ALTER TABLE utilizador
+            ADD COLUMN IF NOT EXISTS "Foto_URL" VARCHAR(300);
+        '''))
+        conn.execute(text('''
+            ALTER TABLE utilizador
+            ADD COLUMN IF NOT EXISTS "Tipo_Utilizador" VARCHAR(50);
+        '''))
+
+with app.app_context():
+    ensure_google_columns()
+
 
 # OAuth / Google
 oauth = OAuth(app)
@@ -513,6 +534,7 @@ def logout():
 if __name__ == "__main__":
     # Nota: em produção, gunicorn vai usar o app. Este run é apenas para testes locais.
     app.run(debug=True)
+
 
 
 

@@ -325,10 +325,51 @@ def gerar_catalogo():
 
     return redirect("/static/pdf/catalogo.pdf")
 
+@app.route("/login")
+def login():
+    redirect_uri = url_for("google_callback", _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route("/login/google/callback")
+def google_callback():
+    token = google.authorize_access_token()
+    user_info = token["userinfo"]
+
+    email = user_info["email"]
+    nome = user_info.get("name", email)
+    foto = user_info.get("picture")
+    google_id = user_info["sub"]
+
+    user = Utilizador.query.filter_by(email=email).first()
+
+    if not user:
+        user = Utilizador(
+            google_id=google_id,
+            nome=nome,
+            email=email,
+            foto_url=foto,
+        )
+        db.session.add(user)
+        db.session.commit()
+
+    session["user_id"] = user.id
+    session["user_email"] = user.email
+
+    return redirect(url_for("index"))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
+
+
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 

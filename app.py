@@ -46,9 +46,6 @@ os.makedirs(PDF_FOLDER, exist_ok=True)
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
-
-
 @app.route("/")
 def index():
     q = request.args.get("q", "", type=str).strip()
@@ -82,7 +79,6 @@ def index():
         selected_categoria=categoria_id,
     )
 
-
 @app.route("/imagem/<int:imagem_id>")
 def imagem_detalhe(imagem_id: int):
     img = Imagem.query.get_or_404(imagem_id)
@@ -99,8 +95,6 @@ def imagem_detalhe(imagem_id: int):
         query_text="",
         selected_categoria=None,
     )
-
-
 @app.route("/publicar", methods=["GET", "POST"])
 def publicar():
     if request.method == "POST":
@@ -108,7 +102,6 @@ def publicar():
         titulo = request.form.get("titulo")
         categoria_id = request.form.get("categoria", type=int)
         tags = request.form.get("tags", "")
-
         if not ficheiro or ficheiro.filename == "":
             flash("Selecione um ficheiro.", "error")
             return redirect(request.url)
@@ -118,16 +111,12 @@ def publicar():
         if not titulo:
             flash("Título é obrigatório.", "error")
             return redirect(request.url)
-
         filename = secure_filename(ficheiro.filename)
         caminho_local = os.path.join(UPLOAD_FOLDER, filename)
         ficheiro.save(caminho_local)
         caminho_url = "/" + caminho_local.replace("\\", "/")
-
         user = current_user()
-
         categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
-
         img = Imagem(
             titulo=titulo,
             caminho_armazenamento=caminho_url,
@@ -137,75 +126,55 @@ def publicar():
         )
         if tags:
             img.tags = tags
-
         db.session.add(img)
         db.session.commit()
         flash("Publicado com sucesso!", "success")
         return redirect(url_for("index"))
-
     categorias = Categoria.query.all()
     return render_template("upload.html", categorias=categorias, query_text="", selected_categoria=None)
-
 
 @app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
 def apagar_imagem(imagem_id: int):
     img = Imagem.query.get_or_404(imagem_id)
-
     Comentario.query.filter_by(id_imagem=imagem_id).delete()
     Reacao.query.filter_by(id_imagem=imagem_id).delete()
     Voto.query.filter_by(id_imagem=imagem_id).delete()
-
     caminho_relativo = img.caminho_armazenamento.lstrip("/")
     caminho_ficheiro = os.path.join(app.root_path, caminho_relativo)
-
     db.session.delete(img)
     db.session.commit()
-
     try:
         os.remove(caminho_ficheiro)
     except FileNotFoundError:
         pass
-
     flash("Imagem apagada.", "success")
     return redirect(url_for("index"))
-
 
 @app.route("/comentario", methods=["POST"])
 def comentario():
     texto = request.form.get("texto")
     imagem_id = request.form.get("imagem_id", type=int)
-
     if not texto or len(texto) > 140:
         flash("Comentário inválido ou demasiado longo (máx. 140).", "error")
         return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
-
     user = current_user()
-
-
     c = Comentario(texto=texto, id_imagem=imagem_id, id_utilizador=user.id if user else None)
     db.session.add(c)
     db.session.commit()
 
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
 
-
 @app.route("/reacao", methods=["POST"])
 def reacao():
     tipo = request.form.get("tipo")
     imagem_id = request.form.get("imagem_id", type=int)
-
     if not tipo or not imagem_id:
         return redirect(url_for("index"))
-
     user = current_user()
-
-
     r = Reacao(tipo=tipo, id_imagem=imagem_id, id_utilizador=user.id if user else None)
     db.session.add(r)
     db.session.commit()
-
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
-
 
 @app.route("/exposicao")
 def exposicao():
@@ -219,12 +188,10 @@ def exposicao():
         selected_categoria=None,
     )
 
-
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
     if request.method == "POST":
         action = request.form.get("action")
-
         if action == "create_categoria":
             nome = request.form.get("nome")
             if nome:
@@ -232,7 +199,6 @@ def admin():
                 db.session.add(c)
                 db.session.commit()
                 flash("Categoria criada.", "success")
-
         elif action == "create_exposicao":
             nome = request.form.get("nome")
             mes = request.form.get("mes")
@@ -241,7 +207,6 @@ def admin():
                 db.session.add(e)
                 db.session.commit()
                 flash("Exposição criada.", "success")
-
         elif action == "update_exposicao":
             exposicao_id = request.form.get("exposicao_id", type=int)
             e = Exposicao.query.get(exposicao_id)
@@ -252,7 +217,6 @@ def admin():
                 e.mes = novo_mes
                 db.session.commit()
                 flash("Exposição atualizada.", "success")
-
         elif action == "delete_exposicao":
             exposicao_id = request.form.get("exposicao_id", type=int)
             e = Exposicao.query.get(exposicao_id)
@@ -260,7 +224,6 @@ def admin():
                 db.session.delete(e)
                 db.session.commit()
                 flash("Exposição apagada.", "success")
-
     categorias = Categoria.query.all()
     exposicoes = Exposicao.query.all()
     return render_template(
@@ -271,7 +234,6 @@ def admin():
         selected_categoria=None,
     )
 
-
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
     exposicoes = Exposicao.query.all()
@@ -279,7 +241,6 @@ def exportar_exposicao():
     pdf_url = None
     exposicao_selecionada = None
     top = []
-
     if request.method == "POST":
         exposicao_id = request.form.get("exposicao_id", type=int)
         if exposicao_id:
@@ -294,9 +255,7 @@ def exportar_exposicao():
                     .limit(10)
                     .all()
                 )
-
                 from cloudconvert_service import html_para_pdf
-
                 html_content = render_template(
                     "catalogo.html",
                     exposicao=exposicao_selecionada,
@@ -304,13 +263,10 @@ def exportar_exposicao():
                 )
                 html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_id}.html")
                 pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_id}.pdf")
-
                 with open(html_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
-
                 html_para_pdf(html_path, pdf_path)
                 pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_id}.pdf"
-
     return render_template(
         "exportar_exposicao.html",
         exposicoes=exposicoes,
@@ -322,22 +278,16 @@ def exportar_exposicao():
         selected_categoria=None,
     )
 
-
 @app.route("/catalogo")
 def gerar_catalogo():
     imagens = Imagem.query.order_by(Imagem.data_upload.desc()).limit(20).all()
-
     from cloudconvert_service import html_para_pdf
-
     html_content = render_template("catalogo.html", imagens=imagens, exposicao=None)
     html_path = os.path.join(TEMP_FOLDER, "catalogo.html")
     pdf_path = os.path.join(PDF_FOLDER, "catalogo.pdf")
-
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-
     html_para_pdf(html_path, pdf_path)
-
     return redirect("/static/pdf/catalogo.pdf")
 
 @app.route("/login")
@@ -345,19 +295,15 @@ def login():
     redirect_uri = url_for("google_callback", _external=True)
     return google.authorize_redirect(redirect_uri)
 
-
 @app.route("/login/google/callback")
 def google_callback():
     token = google.authorize_access_token()
     user_info = token["userinfo"]
-
     email = user_info["email"]
     nome = user_info.get("name", email)
     foto = user_info.get("picture")
     google_id = user_info["sub"]
-
     user = Utilizador.query.filter_by(email=email).first()
-
     if not user:
         user = Utilizador(
             google_id=google_id,
@@ -367,18 +313,14 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
-
     session["user_id"] = user.id
     session["user_email"] = user.email
-
     return redirect(url_for("index"))
-
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("index"))
-
 def current_user():
     uid = session.get("user_id")
     if uid:
@@ -392,16 +334,7 @@ def admin():
         return redirect(url_for("index"))
     ...
 
-
-
-
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
-
-
-
-
-

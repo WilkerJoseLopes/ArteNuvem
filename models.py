@@ -8,14 +8,16 @@ class Utilizador(db.Model):
     __table_args__ = {'extend_existing': True}
 
     id = db.Column("ID_Utilizador", db.Integer, primary_key=True)
+    google_id = db.Column("Google_ID", db.String(200), unique=True, nullable=True)
+
     nome = db.Column("Nome", db.String(150), nullable=False)
     email = db.Column("Email", db.String(150), unique=True, nullable=False)
-    palavra_passe = db.Column("Palavra_Passe", db.String(255))
+    foto_url = db.Column("Foto_URL", db.String(300), nullable=True)
+
     tipo_utilizador = db.Column("Tipo_Utilizador", db.String(50), default="Aluno")
 
     imagens = db.relationship("Imagem", backref="autor", lazy=True)
-    comentarios = db.relationship("Comentario", backref="autor_comentario", lazy=True)
-    reacoes = db.relationship("Reacao", backref="autor_reacao", lazy=True)
+
 
 
 class Categoria(db.Model):

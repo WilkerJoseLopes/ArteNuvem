@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex;gap:1.2rem;align-items:center;margin-bottom:1rem;">
+    <img src="{{ user.foto_url or url_for('static', filename='imgICO/icone.png') }}" alt="avatar" class="user-avatar" style="width:88px;height:88px;">
+    <div>
+        <h1 style="margin:0">{{ user.nome }}</h1>
+        {% if user.tipo_utilizador %}
+            <div class="small">Tipo: {{ user.tipo_utilizador }}</div>
+        {% endif %}
+        {% if user.Descricao %}
+            <p style="margin-top:0.4rem">{{ user.Descricao }}</p>
+        {% endif %}
+        {% if current_user and current_user.id == user.id %}
+            <a href="{{ url_for('editar_perfil') }}"><button>Editar perfil</button></a>
+        {% endif %}
+    </div>
+</div>
+
+<section>
+    <h2>Imagens de {{ user.nome }}</h2>
+    <div class="grid">
+        {% for img in imagens %}
+        <div class="card">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+            </a>
+            <div class="card-body">
+                <h3>{{ img.titulo }}</h3>
+                <p>ID: {{ img.id }}</p>
+                {% if img.categoria_texto %}
+                    <span class="badge">{{ img.categoria_texto }}</span>
+                {% endif %}
+                {% if current_user and (current_user.id == img.id_utilizador or current_user.email == ADMIN_EMAIL) %}
+                <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
+                    <button type="submit">Apagar</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p>Nenhuma imagem publicada por este utilizador.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

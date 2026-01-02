@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 import threading
 from functools import wraps
-
+from flask import abort
 from flask import (
     Flask,
     render_template,
@@ -539,6 +539,52 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
+@app.route("/perfil")
+def perfil_me():
+    user = current_user()
+    if not user:
+        return redirect(url_for("login"))
+    return redirect(url_for("perfil", imagem_id=user.id))
+
+@app.route("/perfil/<int:imagem_id>")
+def perfil(imagem_id: int):
+    user = Utilizador.query.get_or_404(imagem_id)
+    imagens = Imagem.query.filter_by(id_utilizador=user.id).order_by(Imagem.data_upload.desc()).all()
+    return render_template("perfil.html", user=user, imagens=imagens, categorias=Categoria.query.all(), query_text="", selected_categoria=None)
+
+@app.route("/perfil/editar", methods=["GET", "POST"])
+@login_required
+def editar_perfil():
+    user = current_user()
+    if not user:
+        return redirect(url_for("login"))
+    if request.method == "POST":
+        nome = request.form.get("nome", "").strip()
+        descricao = request.form.get("descricao", "").strip()
+        if not nome:
+            flash("O nome não pode ficar vazio.", "error")
+            return redirect(url_for("editar_perfil"))
+        user.nome = nome
+        # tenta definir ambos os possíveis nomes de coluna/atributo para compatibilidade
+        try:
+            setattr(user, "Descricao", descricao)
+        except Exception:
+            pass
+        try:
+            setattr(user, "descricao", descricao)
+        except Exception:
+            pass
+        try:
+            db.session.add(user)
+            db.session.commit()
+            flash("Perfil atualizado.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash("Erro ao guardar perfil.", "error")
+        return redirect(url_for("perfil", imagem_id=user.id))
+    return render_template("editar_perfil.html", categorias=Categoria.query.all(), query_text="", selected_categoria=None)
+
 if __name__ == "__main__":
     app.run(debug=True)
+
 

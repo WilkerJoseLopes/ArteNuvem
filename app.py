@@ -1,4 +1,3 @@
-# :contentReference[oaicite:0]{index=0}
 from datetime import datetime
 import os
 import threading
@@ -12,6 +11,7 @@ from flask import (
     url_for,
     flash,
     session,
+    jsonify,
 )
 from werkzeug.utils import secure_filename
 from sqlalchemy import func, desc
@@ -25,22 +25,16 @@ from sqlalchemy import text
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
-# no início do arquivo app.py, onde tens app = Flask(...)
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# security / sessions
-# no Render o site é https, define cookie seguro e same-site apropriado
 app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # Lax é ok para OAuth redirects
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
-# aplica ProxyFix para que Flask reconheça X-Forwarded-Proto/Host (render usa proxy)
-# x_proto=1 e x_host=1 geralmente suficientes
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-
 
 db.init_app(app)
 
@@ -62,8 +56,6 @@ def ensure_google_columns():
 with app.app_context():
     ensure_google_columns()
 
-
-# OAuth / Google
 oauth = OAuth(app)
 
 google = oauth.register(
@@ -74,7 +66,6 @@ google = oauth.register(
     client_kwargs={"scope": "openid email profile"},
 )
 
-# Folders
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
@@ -84,10 +75,8 @@ PDF_FOLDER = os.path.join("static", "pdf")
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 os.makedirs(PDF_FOLDER, exist_ok=True)
 
-
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 def current_user():
     uid = session.get("user_id")
@@ -95,18 +84,14 @@ def current_user():
         return Utilizador.query.get(uid)
     return None
 
-
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not current_user():
             return redirect(url_for("login"))
         return f(*args, **kwargs)
-
     return decorated
 
-
-# Ensure tables and default categories are created once on first requests.
 _tables_lock = threading.Lock()
 
 @app.context_processor
@@ -117,11 +102,9 @@ def inject_user():
 def ensure_tables():
     if app.config.get("TABLES_INITIALIZED"):
         return
-
     with _tables_lock:
         if app.config.get("TABLES_INITIALIZED"):
             return
-        # Use app_context to be safe when called from before_request
         with app.app_context():
             db.create_all()
             default = ["Todos", "Fotos", "Desenhos", "Outro"]
@@ -130,7 +113,6 @@ def ensure_tables():
                     db.session.add(Categoria(nome=nome))
             db.session.commit()
         app.config["TABLES_INITIALIZED"] = True
-
 
 @app.route("/")
 def index():
@@ -165,7 +147,6 @@ def index():
         selected_categoria=categoria_id,
     )
 
-
 @app.route("/imagem/<int:imagem_id>")
 def imagem_detalhe(imagem_id: int):
     img = Imagem.query.get_or_404(imagem_id)
@@ -182,7 +163,6 @@ def imagem_detalhe(imagem_id: int):
         query_text="",
         selected_categoria=None,
     )
-
 
 @app.route("/publicar", methods=["GET", "POST"])
 @login_required
@@ -205,7 +185,6 @@ def publicar():
             return redirect(request.url)
 
         filename = secure_filename(ficheiro.filename)
-        # Evita sobrescrever ficheiros com o mesmo nome
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         filename = f"{timestamp}_{filename}"
         caminho_local = os.path.join(UPLOAD_FOLDER, filename)
@@ -232,37 +211,27 @@ def publicar():
     categorias = Categoria.query.all()
     return render_template("upload.html", categorias=categorias, query_text="", selected_categoria=None)
 
-
 @app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
 @login_required
 def apagar_imagem(imagem_id: int):
     user = current_user()
     img = Imagem.query.get_or_404(imagem_id)
-
-    # autorização: dono da imagem ou admin
     if not (user.id == img.id_utilizador or (user.email and user.email == ADMIN_EMAIL)):
         flash("Não tens permissão para apagar esta imagem.", "error")
         return redirect(url_for("index"))
-
-    # Apaga comentários, reações e votos relacionados
     Comentario.query.filter_by(id_imagem=imagem_id).delete()
     Reacao.query.filter_by(id_imagem=imagem_id).delete()
     Voto.query.filter_by(id_imagem=imagem_id).delete()
-
     caminho_relativo = img.caminho_armazenamento.lstrip("/")
     caminho_ficheiro = os.path.join(app.root_path, caminho_relativo)
-
     db.session.delete(img)
     db.session.commit()
-
     try:
         os.remove(caminho_ficheiro)
     except FileNotFoundError:
         pass
-
     flash("Imagem apagada.", "success")
     return redirect(url_for("index"))
-
 
 @app.route("/comentario", methods=["POST"])
 @login_required
@@ -270,17 +239,13 @@ def comentario():
     user = current_user()
     texto = request.form.get("texto")
     imagem_id = request.form.get("imagem_id", type=int)
-
     if not texto or len(texto) > 140:
         flash("Comentário inválido ou demasiado longo (máx. 140).", "error")
         return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
-
     c = Comentario(texto=texto, id_imagem=imagem_id, id_utilizador=user.id if user else None)
     db.session.add(c)
     db.session.commit()
-
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
-
 
 @app.route("/reacao", methods=["POST"])
 @login_required
@@ -288,16 +253,12 @@ def reacao():
     user = current_user()
     tipo = request.form.get("tipo")
     imagem_id = request.form.get("imagem_id", type=int)
-
     if not tipo or not imagem_id:
         return redirect(url_for("index"))
-
     r = Reacao(tipo=tipo, id_imagem=imagem_id, id_utilizador=user.id if user else None)
     db.session.add(r)
     db.session.commit()
-
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
-
 
 @app.route("/exposicao")
 def exposicao():
@@ -310,7 +271,6 @@ def exposicao():
         query_text="",
         selected_categoria=None,
     )
-
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
@@ -368,7 +328,6 @@ def admin():
         selected_categoria=None,
     )
 
-
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
     exposicoes = Exposicao.query.all()
@@ -376,7 +335,6 @@ def exportar_exposicao():
     pdf_url = None
     exposicao_selecionada = None
     top = []
-
     if request.method == "POST":
         exposicao_id = request.form.get("exposicao_id", type=int)
         if exposicao_id:
@@ -391,9 +349,7 @@ def exportar_exposicao():
                     .limit(10)
                     .all()
                 )
-
                 from cloudconvert_service import html_para_pdf
-
                 html_content = render_template(
                     "catalogo.html",
                     exposicao=exposicao_selecionada,
@@ -401,13 +357,10 @@ def exportar_exposicao():
                 )
                 html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_id}.html")
                 pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_id}.pdf")
-
                 with open(html_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
-
                 html_para_pdf(html_path, pdf_path)
                 pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_id}.pdf"
-
     return render_template(
         "exportar_exposicao.html",
         exposicoes=exposicoes,
@@ -419,96 +372,152 @@ def exportar_exposicao():
         selected_categoria=None,
     )
 
-
 @app.route("/catalogo")
 def gerar_catalogo():
     imagens = Imagem.query.order_by(Imagem.data_upload.desc()).limit(20).all()
-
     from cloudconvert_service import html_para_pdf
-
     html_content = render_template("catalogo.html", imagens=imagens, exposicao=None)
     html_path = os.path.join(TEMP_FOLDER, "catalogo.html")
     pdf_path = os.path.join(PDF_FOLDER, "catalogo.pdf")
-
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-
     html_para_pdf(html_path, pdf_path)
-
     return redirect("/static/pdf/catalogo.pdf")
-
 
 @app.route("/certificado/<int:user_id>")
 @login_required
 def gerar_certificado(user_id):
-    # apenas users logados (ou admin) podem gerar certificado para si ou admin para outro
     requester = current_user()
     if not requester:
         return redirect(url_for("login"))
-
-    # permitir só para o próprio user ou admin
     if requester.id != user_id and (requester.email != ADMIN_EMAIL):
         flash("Não tens permissão para gerar este certificado.", "error")
         return redirect(url_for("index"))
-
     user = Utilizador.query.get_or_404(user_id)
-
     html_content = render_template("certificado.html", user=user)
     html_path = os.path.join(TEMP_FOLDER, f"certificado_{user.id}.html")
     pdf_path = os.path.join(PDF_FOLDER, f"certificado_{user.id}.pdf")
-
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-
-    # usar cloudconvert_service (assume que existe e está configurado)
     try:
         from cloudconvert_service import html_para_pdf
         html_para_pdf(html_path, pdf_path)
     except Exception:
-        # fallback simples: gravar HTML e não converter se o serviço falhar
         flash("Geração de PDF falhou (CloudConvert). HTML guardado temporariamente.", "error")
-
     return redirect("/" + pdf_path)
 
+# API endpoints
+@app.route("/api/imagens", methods=["GET"])
+def api_imagens():
+    q = request.args.get("q", "", type=str).strip()
+    categoria_id = request.args.get("categoria", type=int)
+    page = max(request.args.get("page", 1, type=int), 1)
+    per = min(max(request.args.get("per", 20, type=int), 1), 200)
+    query = Imagem.query
+    if categoria_id:
+        query = query.filter_by(id_categoria=categoria_id)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            (Imagem.titulo.ilike(like)) |
+            (Imagem.tags.ilike(like)) |
+            (Imagem.categoria_texto.ilike(like))
+        )
+    total = query.count()
+    items = query.order_by(Imagem.data_upload.desc()).offset((page - 1) * per).limit(per).all()
+    def to_dict(img):
+        return {
+            "id": getattr(img, "id", None),
+            "titulo": getattr(img, "titulo", None),
+            "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+            "categoria_texto": getattr(img, "categoria_texto", None),
+            "id_categoria": getattr(img, "id_categoria", None),
+            "tags": getattr(img, "tags", None),
+            "id_utilizador": getattr(img, "id_utilizador", None),
+            "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None
+        }
+    return jsonify({
+        "total": total,
+        "page": page,
+        "per": per,
+        "imagens": [to_dict(i) for i in items]
+    })
+
+@app.route("/api/imagens/<int:imagem_id>", methods=["GET"])
+def api_imagem_detail(imagem_id):
+    img = Imagem.query.get_or_404(imagem_id)
+    votos = db.session.query(func.count(Voto.id)).filter(Voto.id_imagem == imagem_id).scalar() or 0
+    num_comentarios = Comentario.query.filter_by(id_imagem=imagem_id).count()
+    data = {
+        "id": getattr(img, "id", None),
+        "titulo": getattr(img, "titulo", None),
+        "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+        "categoria_texto": getattr(img, "categoria_texto", None),
+        "id_categoria": getattr(img, "id_categoria", None),
+        "tags": getattr(img, "tags", None),
+        "id_utilizador": getattr(img, "id_utilizador", None),
+        "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None,
+        "votos": int(votos),
+        "comentarios": int(num_comentarios)
+    }
+    return jsonify(data)
+
+@app.route("/api/categorias", methods=["GET"])
+def api_categorias():
+    categorias = Categoria.query.order_by(Categoria.nome).all()
+    data = [{"id": c.id, "nome": c.nome} for c in categorias]
+    return jsonify(data)
+
+@app.route("/api/exposicoes/<int:exposicao_id>/top", methods=["GET"])
+def api_exposicao_top(exposicao_id):
+    exposicao = Exposicao.query.get_or_404(exposicao_id)
+    rows = db.session.query(
+        Imagem,
+        func.count(Voto.id).label("total_votos")
+    ).outerjoin(Voto, Voto.id_imagem == Imagem.id).group_by(Imagem.id).order_by(func.count(Voto.id).desc()).limit(10).all()
+    def to_min(img, votos):
+        return {
+            "id": getattr(img, "id", None),
+            "titulo": getattr(img, "titulo", None),
+            "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+            "categoria_texto": getattr(img, "categoria_texto", None),
+            "votos": int(votos)
+        }
+    top = [to_min(img, votos) for img, votos in rows]
+    return jsonify({
+        "exposicao_id": exposicao.id,
+        "exposicao_nome": getattr(exposicao, "nome", None),
+        "top": top
+    })
 
 @app.route("/login")
 def login():
     redirect_uri = url_for("google_callback", _external=True)
     return google.authorize_redirect(redirect_uri)
 
-
 @app.route("/login/google/callback")
 def google_callback():
-    # Tenta obter token e userinfo de forma robusta
     token = google.authorize_access_token()
     user_info = {}
-
-    # 1) Tentar endpoint /userinfo
     try:
         resp = google.get("userinfo")
         if resp and resp.ok:
             user_info = resp.json()
     except Exception:
         user_info = {}
-
-    # 2) fallback para id_token parsing
     if not user_info:
         try:
             user_info = google.parse_id_token(token)
         except Exception:
             user_info = token.get("userinfo") or token.get("id_token") or {}
-
     email = user_info.get("email")
     if not email:
         flash("Erro ao obter email do Google. Tenta de novo.", "error")
         return redirect(url_for("index"))
-
     nome = user_info.get("name", email)
     foto = user_info.get("picture")
     google_id = user_info.get("sub")
-
     user = Utilizador.query.filter_by(email=email).first()
-
     if not user:
         user = Utilizador(
             google_id=google_id,
@@ -518,23 +527,14 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
-
     session["user_id"] = user.id
     session["user_email"] = user.email
-
     return redirect(url_for("index"))
-
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("index"))
 
-
 if __name__ == "__main__":
-    # Nota: em produção, gunicorn vai usar o app. Este run é apenas para testes locais.
     app.run(debug=True)
-
-
-
-

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Editar Perfil</h1>
+
+<form class="form" method="post" action="{{ url_for('editar_perfil') }}">
+    <label>Nome de exibição</label>
+    <input type="text" name="nome" value="{{ current_user.nome }}" required>
+
+    <label>Descrição (bio)</label>
+    <textarea name="descricao" maxlength="600">{{ current_user.Descricao if current_user.Descricao is defined else '' }}</textarea>
+
+    <div style="display:flex;gap:0.5rem;">
+        <button type="submit">Guardar</button>
+        <a href="{{ url_for('perfil', imagem_id=current_user.id) }}" class="btn-link" style="align-self:center;padding:0.4rem 0.6rem;border-radius:8px;">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

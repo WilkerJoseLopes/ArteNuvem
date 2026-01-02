@@ -1,4 +1,3 @@
-<!-- :contentReference[oaicite:0]{index=0} -->
 <!doctype html>
 <html lang="pt">
 <head>
@@ -37,16 +36,17 @@
 
         {% if current_user %}
         <div class="user-box">
-            <img
-              src="{{ current_user.foto_url or url_for('static', filename='imgICO/icone.png') }}"
-              class="user-avatar"
-              alt="perfil"
-            >
-            <div class="user-meta">
-                <div class="user-name">{{ current_user.nome }}</div>
-                <div class="user-email small">{{ current_user.email }}</div>
-            </div>
-            <a href="{{ url_for('logout') }}" class="btn-link" title="Logout">Logout</a>
+            <a href="{{ url_for('perfil', imagem_id=current_user.id) }}" style="display:flex;align-items:center;text-decoration:none;color:inherit;">
+              <img
+                src="{{ current_user.foto_url or url_for('static', filename='imgICO/icone.png') }}"
+                class="user-avatar"
+                alt="perfil"
+              >
+              <div class="user-meta" style="margin-left:0.4rem;">
+                  <div class="user-name">{{ current_user.nome }}</div>
+              </div>
+            </a>
+            <a href="{{ url_for('logout') }}" class="btn-link" title="Logout" style="margin-left:0.6rem;">Logout</a>
         </div>
         {% else %}
         <a class="btn-login" href="{{ url_for('login') }}">Login com Google</a>
@@ -63,9 +63,11 @@
     {% if current_user %}
       <a href="{{ url_for('publicar') }}">Publicar imagem</a>
       <a href="{{ url_for('exportar_exposicao') }}">Exportar Exposição (PDF)</a>
+      <a href="{{ url_for('perfil', imagem_id=current_user.id) }}">Meu Perfil</a>
+      <a href="{{ url_for('perfil', imagem_id=current_user.id) }}">Editar Perfil</a>
     {% endif %}
 
-    {% if current_user and current_user.email == ADMIN_EMAIL %}
+    {% if current_user and (current_user.email == ADMIN_EMAIL) %}
       <a href="{{ url_for('admin') }}">Admin</a>
     {% endif %}
 
@@ -115,7 +117,6 @@
     menu.classList.toggle('open');
     menu.setAttribute('aria-hidden', !menu.classList.contains('open'));
   }
-  // close menu on outside click
   document.addEventListener('click', function(e){
     const menu = document.getElementById('mobileMenu');
     const btn = document.querySelector('.hamburger');

@@ -453,6 +453,7 @@ def api_imagem_detail(imagem_id):
         "id": getattr(img, "id", None),
         "titulo": getattr(img, "titulo", None),
         "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+        "url_publica": request.host_url.rstrip("/") + getattr(img, "caminho_armazenamento", ""),
         "categoria_texto": getattr(img, "categoria_texto", None),
         "id_categoria": getattr(img, "id_categoria", None),
         "tags": getattr(img, "tags", None),
@@ -461,6 +462,7 @@ def api_imagem_detail(imagem_id):
         "votos": int(votos),
         "comentarios": int(num_comentarios)
     }
+
     return jsonify(data)
 
 @app.route("/api/categorias", methods=["GET"])
@@ -539,3 +541,4 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

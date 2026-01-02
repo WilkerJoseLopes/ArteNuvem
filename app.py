@@ -430,6 +430,7 @@ def api_imagens():
             "id": getattr(img, "id", None),
             "titulo": getattr(img, "titulo", None),
             "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+            "url_publica": request.host_url.rstrip("/") + getattr(img, "caminho_armazenamento", ""),
             "categoria_texto": getattr(img, "categoria_texto", None),
             "id_categoria": getattr(img, "id_categoria", None),
             "tags": getattr(img, "tags", None),

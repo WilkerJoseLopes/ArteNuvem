@@ -17,9 +17,11 @@
                 {% if img.categoria_texto %}
                     <span class="badge">{{ img.categoria_texto }}</span>
                 {% endif %}
+                {% if current_user and (current_user.id == img.id_utilizador or current_user.email == ADMIN_EMAIL) %}
                 <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
                     <button type="submit">Apagar</button>
                 </form>
+                {% endif %}
             </div>
         </div>
         {% else %}
@@ -43,9 +45,11 @@
                 {% if img.categoria_texto %}
                     <span class="badge">{{ img.categoria_texto }}</span>
                 {% endif %}
+                {% if current_user and (current_user.id == img.id_utilizador or current_user.email == ADMIN_EMAIL) %}
                 <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
                     <button type="submit">Apagar</button>
                 </form>
+                {% endif %}
             </div>
         </div>
         {% else %}

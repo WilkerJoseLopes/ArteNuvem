@@ -280,15 +280,14 @@ def apagar_imagem(imagem_id: int):
     db.session.delete(img)
     db.session.commit()
     # tentar apagar do Supabase também
+        # tentar apagar do Supabase também
     try:
-    # extrair object key do caminho_armazenamento (última parte da URL)
         if img.caminho_armazenamento and supabase_service:
             object_key = img.caminho_armazenamento.rstrip("/").split("/")[-1]
-        # remover
             supabase_service.storage.from_("imagens").remove([object_key])
     except Exception as e:
-    # não falha a operação só por causa do delete remoto
         app.logger.warning("Falha a remover ficheiro no Supabase: %s", e)
+
 
 
 @app.route("/comentario", methods=["POST"])
@@ -660,6 +659,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

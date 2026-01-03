@@ -151,9 +151,14 @@ def login_required(f):
 
 _tables_lock = threading.Lock()
 
+raw_admins = os.getenv("ADMIN_EMAIL", "")
+ADMIN_EMAILS = [e.strip().lower() for e in raw_admins.split(",") if e.strip()]
+ADMIN_EMAIL = ADMIN_EMAILS[0] if ADMIN_EMAILS else None
+
 @app.context_processor
 def inject_user():
-    return {"current_user": current_user(), "ADMIN_EMAILS": ADMIN_EMAILS}
+    return {"current_user": current_user(), "ADMIN_EMAILS": ADMIN_EMAILS, "ADMIN_EMAIL": ADMIN_EMAIL}
+
 
 
 @app.before_request
@@ -273,9 +278,12 @@ def publicar():
 def apagar_imagem(imagem_id: int):
     user = current_user()
     img = Imagem.query.get_or_404(imagem_id)
-    if not (user.id == img.id_utilizador or (user.email and user.email == ADMIN_EMAIL)):
+    user_email = (user.email or "").strip().lower() if user else ""
+    # permite que o dono da imagem ou admin apague
+    if not user or not (user.id == img.id_utilizador or (ADMIN_EMAILS and user_email in ADMIN_EMAILS)):
         flash("Não tens permissão para apagar esta imagem.", "error")
         return redirect(url_for("index"))
+
 
     # Apagar dependências na BD
     Comentario.query.filter_by(id_imagem=imagem_id).delete()
@@ -356,8 +364,7 @@ def exposicao():
 def admin():
     user = current_user()
     user_email = (user.email or "").strip().lower() if user else ""
-        if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
-
+    if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
         flash("Acesso restrito. Apenas o administrador pode aceder a esta secção.", "error")
         return redirect(url_for("index"))
 
@@ -409,6 +416,7 @@ def admin():
         query_text="",
         selected_categoria=None,
     )
+
 
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
@@ -495,6 +503,7 @@ def api_imagens():
     categoria_id = request.args.get("categoria", type=int)
     page = max(request.args.get("page", 1, type=int), 1)
     per = min(max(request.args.get("per", 20, type=int), 1), 200)
+
     query = Imagem.query
     if categoria_id:
         query = query.filter_by(id_categoria=categoria_id)
@@ -505,28 +514,28 @@ def api_imagens():
             (Imagem.tags.ilike(like)) |
             (Imagem.categoria_texto.ilike(like))
         )
+
     total = query.count()
     items = query.order_by(Imagem.data_upload.desc()).offset((page - 1) * per).limit(per).all()
-    
-def to_dict(img):
-    caminho = getattr(img, "caminho_armazenamento", "") or ""
-    if caminho.startswith("http://") or caminho.startswith("https://"):
-        url_publica = caminho
-    else:
-        url_publica = request.host_url.rstrip("/") + caminho
 
-    return {
-        "id": getattr(img, "id", None),
-        "titulo": getattr(img, "titulo", None),
-        "caminho_armazenamento": caminho,
-        "url_publica": url_publica,
-        "categoria_texto": getattr(img, "categoria_texto", None),
-        "id_categoria": getattr(img, "id_categoria", None),
-        "tags": getattr(img, "tags", None),
-        "id_utilizador": getattr(img, "id_utilizador", None),
-        "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None
-    }
+    def to_dict(img):
+        caminho = getattr(img, "caminho_armazenamento", "") or ""
+        if caminho.startswith("http://") or caminho.startswith("https://"):
+            url_publica = caminho
+        else:
+            url_publica = request.host_url.rstrip("/") + caminho
 
+        return {
+            "id": getattr(img, "id", None),
+            "titulo": getattr(img, "titulo", None),
+            "caminho_armazenamento": caminho,
+            "url_publica": url_publica,
+            "categoria_texto": getattr(img, "categoria_texto", None),
+            "id_categoria": getattr(img, "id_categoria", None),
+            "tags": getattr(img, "tags", None),
+            "id_utilizador": getattr(img, "id_utilizador", None),
+            "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None
+        }
 
     return jsonify({
         "total": total,
@@ -684,17 +693,3 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-

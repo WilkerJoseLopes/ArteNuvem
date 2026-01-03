@@ -109,6 +109,21 @@ def ensure_google_columns():
             ALTER TABLE utilizador
             ADD COLUMN IF NOT EXISTS "Tipo_Utilizador" VARCHAR(50);
         '''))
+        # garante a coluna pai de comentário (para threads/respostas)
+        conn.execute(text('''
+            ALTER TABLE comentario
+            ADD COLUMN IF NOT EXISTS "ID_Comentario_Pai" INTEGER;
+        '''))
+        # opcional: criar FK só se não existir (Postgres não tem ADD CONSTRAINT IF NOT EXISTS em todas as versões,
+        # por isso tentamos criar e ignoramos erro)
+        try:
+            conn.execute(text('''
+                ALTER TABLE comentario
+                ADD CONSTRAINT comentario_parent_fk FOREIGN KEY ("ID_Comentario_Pai") REFERENCES comentario("ID_Comentario");
+            '''))
+        except Exception:
+            # se já existe, ignora
+            pass
 
 with app.app_context():
     ensure_google_columns()
@@ -723,5 +738,6 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 

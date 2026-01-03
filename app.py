@@ -212,9 +212,8 @@ def publicar():
         filename = secure_filename(ficheiro.filename)
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         filename = f"{timestamp}_{filename}"
-        caminho_local = os.path.join(UPLOAD_FOLDER, filename)
-        ficheiro.save(caminho_local)
-        caminho_url = "/" + caminho_local.replace("\\", "/")
+        caminho_url = upload_imagem_supabase(ficheiro)
+
 
         categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
 
@@ -611,6 +610,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

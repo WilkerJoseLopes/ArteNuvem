@@ -23,7 +23,7 @@
   <aside>
     <!-- Autor -->
     <div class="card" style="padding:0.75rem; display:flex; gap:0.75rem; align-items:center;">
-      <img src="{{ autor.foto_url if autor else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:48px;height:48px;">
+      <img src="{{ autor.foto_url if autor and autor.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:48px;height:48px;border-radius:50%;">
       <div>
         <a href="{{ url_for('perfil', imagem_id=autor.id if autor else 0) }}" style="text-decoration:none; color:inherit;">
           <div style="font-weight:700;">{{ autor.nome if autor else 'Anónimo' }}</div>
@@ -38,15 +38,17 @@
       <div style="margin-bottom:0.5rem;">Categoria: <strong>{{ imagem.categoria_texto }}</strong></div>
       {% endif %}
 
-      <!-- Like area - updated via JS -->
+      <!-- Like area - controlled by backend via 'user_liked' and 'likes' -->
       <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
-        <button id="likeBtn" class="like-btn {% if current_user and Reacao.query.filter_by(id_imagem=imagem.id, id_utilizador=(current_user.id if current_user else None), tipo='like').first() %}liked{% endif %}"
-                data-imagem-id="{{ imagem.id }}" aria-pressed="false">
+        <button id="likeBtn"
+                class="like-btn {% if user_liked %}liked{% endif %}"
+                data-imagem-id="{{ imagem.id }}"
+                aria-pressed="{{ 'true' if user_liked else 'false' }}">
           <span id="likeHeart">❤️</span> <span id="likeCount">{{ likes }}</span>
         </button>
 
         <!-- delete button for owner/admin -->
-        {% if current_user and (current_user.id == imagem.id_utilizador or (current_user.email|lower in ADMIN_EMAILS)) %}
+        {% if current_user and (current_user.id == imagem.id_utilizador or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
         <form action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" method="post" style="margin:0;">
           <button type="submit" class="icon-btn" onclick="return confirm('Apagar esta imagem?');">Apagar</button>
         </form>
@@ -62,10 +64,10 @@
       <div style="max-height:220px; overflow:auto;">
         {% for c,u in comentarios[:5] %}
         <div style="display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.5rem;">
-          <img src="{{ u.foto_url }}" class="avatar-sm" style="width:34px;height:34px;">
+          <img src="{{ u.foto_url if u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:34px;height:34px;border-radius:50%;">
           <div>
             <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome }}</strong></a>
-            <div class="small">{{ c.texto }}</div>
+            <div class="small" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.texto }}</div>
           </div>
         </div>
         {% endfor %}
@@ -87,7 +89,7 @@
   <form action="{{ url_for('comentario') }}" method="post" class="form-comentario" style="margin-bottom:1rem;">
     <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
     <div style="display:flex; gap:0.6rem; align-items:flex-start;">
-      <img src="{{ current_user.foto_url if current_user else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;">
+      <img src="{{ current_user.foto_url if current_user and current_user.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;border-radius:50%;">
       <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" style="flex:1; padding:0.6rem; border-radius:0.5rem; border:1px solid var(--border);"></textarea>
     </div>
     <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
@@ -100,16 +102,16 @@
 
   <div class="comentarios-lista">
     {% for c, u in comentarios %}
-    <div class="comentario" style="display:flex; gap:0.8rem; align-items:flex-start;">
-      <img src="{{ u.foto_url }}" class="avatar-sm" style="width:44px;height:44px;">
+    <div class="comentario" style="display:flex; gap:0.8rem; align-items:flex-start; padding:0.6rem 0; border-bottom:1px solid rgba(0,0,0,0.04);">
+      <img src="{{ u.foto_url if u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:44px;height:44px;border-radius:50%;">
       <div style="flex:1;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
             <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome }}</strong></a>
-            <div class="small" style="display:inline-block; margin-left:0.5rem;">{{ c.data.strftime('%Y-%m-%d %H:%M') if c.data else '' }}</div>
+            <div class="small" style="display:inline-block; margin-left:0.5rem; color:var(--muted);">{{ c.data.strftime('%Y-%m-%d %H:%M') if c.data else '' }}</div>
           </div>
           <div>
-            {% if current_user and (current_user.id == u.id or (current_user.email|lower in ADMIN_EMAILS)) %}
+            {% if current_user and (current_user.id == u.id or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
             <form action="{{ url_for('apagar_comentario') }}" method="post" style="display:inline;">
               <input type="hidden" name="comentario_id" value="{{ c.id }}">
               <button type="submit" class="icon-btn">Apagar</button>
@@ -152,10 +154,9 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
       const liked = data.status === "liked";
-      const count = data.likes ?? null;
+      const count = data.likes ?? 0;
       likeBtn.classList.toggle("liked", liked);
       document.getElementById("likeCount").textContent = count;
-      // a11y
       likeBtn.setAttribute("aria-pressed", liked ? "true" : "false");
     })
     .catch(err => {

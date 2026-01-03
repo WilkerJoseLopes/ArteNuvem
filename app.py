@@ -338,15 +338,34 @@ def comentario():
 @app.route("/reacao", methods=["POST"])
 @login_required
 def reacao():
-    user = current_user()
     tipo = request.form.get("tipo")
     imagem_id = request.form.get("imagem_id", type=int)
+
     if not tipo or not imagem_id:
         return redirect(url_for("index"))
-    r = Reacao(tipo=tipo, id_imagem=imagem_id, id_utilizador=user.id if user else None)
-    db.session.add(r)
+
+    user = current_user
+
+    existente = Reacao.query.filter_by(
+        tipo=tipo,
+        id_imagem=imagem_id,
+        id_utilizador=user.id
+    ).first()
+
+    if existente:
+        return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+
+    nova = Reacao(
+        tipo=tipo,
+        id_imagem=imagem_id,
+        id_utilizador=user.id
+    )
+
+    db.session.add(nova)
     db.session.commit()
+
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+
 
 @app.route("/exposicao")
 def exposicao():
@@ -693,3 +712,4 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

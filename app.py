@@ -272,21 +272,39 @@ def apagar_imagem(imagem_id: int):
     if not (user.id == img.id_utilizador or (user.email and user.email == ADMIN_EMAIL)):
         flash("Não tens permissão para apagar esta imagem.", "error")
         return redirect(url_for("index"))
+
+    # Apagar dependências na BD
     Comentario.query.filter_by(id_imagem=imagem_id).delete()
     Reacao.query.filter_by(id_imagem=imagem_id).delete()
     Voto.query.filter_by(id_imagem=imagem_id).delete()
-    caminho_relativo = img.caminho_armazenamento.lstrip("/")
-    caminho_ficheiro = os.path.join(app.root_path, caminho_relativo)
+
+    # Se havia ficheiro local (caso legado), tenta remover
+    try:
+        caminho_relativo = (img.caminho_armazenamento or "").lstrip("/")
+        caminho_ficheiro = os.path.join(app.root_path, caminho_relativo)
+        if os.path.exists(caminho_ficheiro):
+            try:
+                os.remove(caminho_ficheiro)
+            except Exception as e:
+                app.logger.warning("Falha a remover ficheiro local: %s", e)
+    except Exception:
+        # não falha se img.caminho_armazenamento não estiver no formato local
+        pass
+
+    # Remove do BD
     db.session.delete(img)
     db.session.commit()
-    # tentar apagar do Supabase também
-        # tentar apagar do Supabase também
+
+    # tentar apagar do Supabase também (se existir)
     try:
         if img.caminho_armazenamento and supabase_service:
             object_key = img.caminho_armazenamento.rstrip("/").split("/")[-1]
             supabase_service.storage.from_("imagens").remove([object_key])
     except Exception as e:
         app.logger.warning("Falha a remover ficheiro no Supabase: %s", e)
+
+    flash("Imagem apagada com sucesso.", "success")
+    return redirect(url_for("index"))
 
 
 
@@ -660,6 +678,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

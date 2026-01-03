@@ -87,8 +87,12 @@ else:
 def internal_error(e):
     tb = traceback.format_exc()
     app.logger.error("Unhandled Exception on request: %s\n%s", request.path, tb)
-    # devolve uma página simples (evita expor stacktrace ao user)
-    return make_response(render_template("500.html", message=str(e)), 500)
+    try:
+        return make_response(render_template("500.html", message=str(e)), 500)
+    except Exception as er:
+        app.logger.exception("Falha a renderizar 500.html: %s", er)
+        return make_response("Internal Server Error", 500)
+
 
 def upload_imagem_supabase(file):
     if not supabase_service:
@@ -239,13 +243,28 @@ def imagem_detalhe(imagem_id):
 
     autor = Utilizador.query.get(img.id_utilizador) if img.id_utilizador else None
 
-    comentarios = (
-        db.session.query(Comentario, Utilizador)
-        .join(Utilizador, Comentario.id_utilizador == Utilizador.id)
-        .filter(Comentario.id_imagem == imagem_id)
-        .order_by(Comentario.data.desc())
-        .all()
+    comentarios = Comentario.query.filter_by(id_imagem=imagem_id).order_by(Comentario.data.desc()).all()
+    comentario_autores = {}
+    for c in comentarios:
+        comentario_autores[c.id] = Utilizador.query.get(c.id_utilizador) if c.id_utilizador else None
+
+    likes = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
+
+    user = current_user()
+    user_liked = False
+    if user:
+        user_liked = Reacao.query.filter_by(id_imagem=imagem_id, id_utilizador=user.id, tipo="like").first() is not None
+
+    return render_template(
+        "imagem.html",
+        imagem=img,
+        autor=autor,
+        comentarios=comentarios,
+        comentario_autores=comentario_autores,
+        likes=likes,
+        user_liked=user_liked
     )
+
 
     # total likes
     likes = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
@@ -377,6 +396,30 @@ def comentario():
     db.session.add(c)
     db.session.commit()
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+
+@app.route("/apagar_comentario", methods=["POST"])
+@login_required
+def apagar_comentario():
+    user = current_user()
+    comentario_id = request.form.get("comentario_id", type=int)
+    imagem_id = request.form.get("imagem_id", type=int)
+
+    if not comentario_id:
+        flash("Comentário inválido.", "error")
+        return redirect(url_for("index"))
+
+    c = Comentario.query.get_or_404(comentario_id)
+
+    user_email = (user.email or "").strip().lower() if user else ""
+    if not user or not (user.id == c.id_utilizador or (ADMIN_EMAILS and user_email in ADMIN_EMAILS)):
+        flash("Não tens permissão para apagar este comentário.", "error")
+        return redirect(url_for("imagem_detalhe", imagem_id=imagem_id or c.id_imagem))
+
+    db.session.delete(c)
+    db.session.commit()
+    flash("Comentário apagado.", "success")
+    return redirect(url_for("imagem_detalhe", imagem_id=imagem_id or c.id_imagem))
+
 
 # fallback (mantém compatibilidade com forms antigos)
 @app.route("/reacao", methods=["POST"])
@@ -795,6 +838,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

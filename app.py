@@ -238,29 +238,42 @@ def index():
     )
 
 @app.route("/imagem/<int:imagem_id>")
-def imagem_detalhe(imagem_id):
+def imagem_detalhe(imagem_id: int):
     img = Imagem.query.get_or_404(imagem_id)
 
     autor = Utilizador.query.get(img.id_utilizador) if img.id_utilizador else None
 
-    comentarios = Comentario.query.filter_by(id_imagem=imagem_id).order_by(Comentario.data.desc()).all()
-    comentario_autores = {}
-    for c in comentarios:
-        comentario_autores[c.id] = Utilizador.query.get(c.id_utilizador) if c.id_utilizador else None
+    # obter comentários + autor (tuplas Comentario, Utilizador). usa outerjoin para segurança
+    comentarios_tuplas = (
+        db.session.query(Comentario, Utilizador)
+        .outerjoin(Utilizador, Comentario.id_utilizador == Utilizador.id)
+        .filter(Comentario.id_imagem == imagem_id)
+        .order_by(Comentario.data.desc())
+        .all()
+    )
 
+    # total de likes
     likes = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
 
-    user = current_user()
+    # verificar se user atual deu like
+    user = None
+    try:
+        user = current_user()
+    except Exception:
+        user = None
+
     user_liked = False
     if user:
-        user_liked = Reacao.query.filter_by(id_imagem=imagem_id, id_utilizador=user.id, tipo="like").first() is not None
+        user_liked = (
+            Reacao.query.filter_by(id_imagem=imagem_id, id_utilizador=user.id, tipo="like").first()
+            is not None
+        )
 
     return render_template(
         "imagem.html",
         imagem=img,
         autor=autor,
-        comentarios=comentarios,
-        comentario_autores=comentario_autores,
+        comentarios=comentarios_tuplas,
         likes=likes,
         user_liked=user_liked
     )
@@ -838,6 +851,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

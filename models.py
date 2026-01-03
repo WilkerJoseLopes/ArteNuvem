@@ -64,13 +64,16 @@ class Comentario(db.Model):
 
 class Reacao(db.Model):
     __tablename__ = "reacao"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.UniqueConstraint("Tipo", "ID_Imagem", "ID_Utilizador", name="unique_reacao_por_utilizador"),
+        {'extend_existing': True}
+    )
 
     id = db.Column("ID_Reacao", db.Integer, primary_key=True)
-    tipo = db.Column("Tipo", db.String(50), nullable=False)
-
+    tipo = db.Column("Tipo", db.String(20), nullable=False)  # ex: 'like'
     id_imagem = db.Column("ID_Imagem", db.Integer, db.ForeignKey("imagem.ID_Imagem"), nullable=False)
-    id_utilizador = db.Column("ID_Utilizador", db.Integer, db.ForeignKey("utilizador.ID_Utilizador"), nullable=True)
+    id_utilizador = db.Column("ID_Utilizador", db.Integer, db.ForeignKey("utilizador.ID_Utilizador"), nullable=False)
+
 
 
 class Exposicao(db.Model):

@@ -55,11 +55,10 @@ class Comentario(db.Model):
 
     id_imagem = db.Column("ID_Imagem", db.Integer, db.ForeignKey("imagem.ID_Imagem"), nullable=False)
     id_utilizador = db.Column("ID_Utilizador", db.Integer, db.ForeignKey("utilizador.ID_Utilizador"), nullable=True)
-    id_comentario_pai = db.Column(
-    db.Integer,
-    db.ForeignKey("comentario.id"),
-    nullable=True
-)
+
+    # mapeamos explicitamente o nome da coluna na BD e referimos a PK correcta da tabela "comentario"
+    id_comentario_pai = db.Column("ID_Comentario_Pai", db.Integer, db.ForeignKey("comentario.ID_Comentario"), nullable=True)
+
 
 
 

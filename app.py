@@ -153,7 +153,8 @@ _tables_lock = threading.Lock()
 
 @app.context_processor
 def inject_user():
-    return {"current_user": current_user()}
+    return {"current_user": current_user(), "ADMIN_EMAILS": ADMIN_EMAILS}
+
 
 @app.before_request
 def ensure_tables():
@@ -354,7 +355,9 @@ def exposicao():
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
     user = current_user()
-    if not user or user.email != ADMIN_EMAIL:
+    user_email = (user.email or "").strip().lower() if user else ""
+        if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
+
         flash("Acesso restrito. Apenas o administrador pode aceder a esta secção.", "error")
         return redirect(url_for("index"))
 
@@ -681,6 +684,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

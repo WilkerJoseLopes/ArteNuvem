@@ -290,6 +290,7 @@ def apagar_imagem(imagem_id: int):
 
 
 
+
 @app.route("/comentario", methods=["POST"])
 @login_required
 def comentario():
@@ -482,25 +483,26 @@ def api_imagens():
         )
     total = query.count()
     items = query.order_by(Imagem.data_upload.desc()).offset((page - 1) * per).limit(per).all()
-    def to_dict(img):
-        caminho = getattr(img, "caminho_armazenamento", "") or ""
-        # se caminho já for um URL completo, usa ele; se for caminho local, concatena com host
-        if caminho.startswith("http://") or caminho.startswith("https://"):
-            url_publica = caminho
-        else:
-            url_publica = request.host_url.rstrip("/") + caminho
+    
+def to_dict(img):
+    caminho = getattr(img, "caminho_armazenamento", "") or ""
+    if caminho.startswith("http://") or caminho.startswith("https://"):
+        url_publica = caminho
+    else:
+        url_publica = request.host_url.rstrip("/") + caminho
 
-        return {
-            "id": getattr(img, "id", None),
-            "titulo": getattr(img, "titulo", None),
-            "caminho_armazenamento": caminho,
-            "url_publica": url_publica,
-            "categoria_texto": getattr(img, "categoria_texto", None),
-            "id_categoria": getattr(img, "id_categoria", None),
-            "tags": getattr(img, "tags", None),
-            "id_utilizador": getattr(img, "id_utilizador", None),
-            "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None
-        }
+    return {
+        "id": getattr(img, "id", None),
+        "titulo": getattr(img, "titulo", None),
+        "caminho_armazenamento": caminho,
+        "url_publica": url_publica,
+        "categoria_texto": getattr(img, "categoria_texto", None),
+        "id_categoria": getattr(img, "id_categoria", None),
+        "tags": getattr(img, "tags", None),
+        "id_utilizador": getattr(img, "id_utilizador", None),
+        "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None
+    }
+
 
     return jsonify({
         "total": total,
@@ -514,7 +516,8 @@ def api_imagem_detail(imagem_id):
     img = Imagem.query.get_or_404(imagem_id)
     votos = db.session.query(func.count(Voto.id)).filter(Voto.id_imagem == imagem_id).scalar() or 0
     num_comentarios = Comentario.query.filter_by(id_imagem=imagem_id).count()
-        caminho = getattr(img, "caminho_armazenamento", "") or ""
+
+    caminho = getattr(img, "caminho_armazenamento", "") or ""
     if caminho.startswith("http://") or caminho.startswith("https://"):
         url_publica = caminho
     else:
@@ -533,8 +536,6 @@ def api_imagem_detail(imagem_id):
         "votos": int(votos),
         "comentarios": int(num_comentarios)
     }
-
-
 
     return jsonify(data)
 
@@ -659,6 +660,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

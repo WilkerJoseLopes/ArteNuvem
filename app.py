@@ -211,21 +211,32 @@ def index():
     )
 
 @app.route("/imagem/<int:imagem_id>")
-def imagem_detalhe(imagem_id: int):
+def imagem_detalhe(imagem_id):
     img = Imagem.query.get_or_404(imagem_id)
-    comentarios = Comentario.query.filter_by(id_imagem=imagem_id).order_by(Comentario.data.desc()).all()
-    reacoes = Reacao.query.filter_by(id_imagem=imagem_id).all()
-    likes = len([r for r in reacoes if r.tipo == "like"])
-    categorias = Categoria.query.all()
+
+    autor = Utilizador.query.get(img.id_utilizador)
+
+    comentarios = (
+        db.session.query(Comentario, Utilizador)
+        .join(Utilizador, Comentario.id_utilizador == Utilizador.id)
+        .filter(Comentario.id_imagem == imagem_id)
+        .order_by(Comentario.data.desc())
+        .all()
+    )
+
+    likes = Reacao.query.filter_by(
+        id_imagem=imagem_id,
+        tipo="like"
+    ).count()
+
     return render_template(
         "imagem.html",
         imagem=img,
+        autor=autor,
         comentarios=comentarios,
-        likes=likes,
-        categorias=categorias,
-        query_text="",
-        selected_categoria=None,
+        likes=likes
     )
+
 
 @app.route("/publicar", methods=["GET", "POST"])
 @login_required
@@ -712,4 +723,5 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 

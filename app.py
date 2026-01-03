@@ -42,40 +42,55 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 db.init_app(app)
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")  # com trailing slash
+# --- Substituir bloco de criação do cliente Supabase por este ---
+SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)  # para leitura (get_public_url)
+# normalizar URL (remove trailing slash só para garantir)
+if SUPABASE_URL:
+    SUPABASE_URL = SUPABASE_URL.rstrip("/")
+
+supabase = None
 supabase_service = None
-if SUPABASE_SERVICE_ROLE_KEY:
-    supabase_service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)  # para upload/delete (server-side)
+
+if not SUPABASE_URL:
+    app.logger.error("SUPABASE_URL não definido. Verifica as env vars no Render.")
+else:
+    if SUPABASE_ANON_KEY:
+        try:
+            supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+            app.logger.info("Supabase (anon) client criado com sucesso.")
+        except Exception as e:
+            app.logger.exception("Falha ao criar supabase anon client: %s", e)
+            supabase = None
+    else:
+        app.logger.warning("SUPABASE_ANON_KEY não definido. Cliente de leitura não será criado.")
+
+    if SUPABASE_SERVICE_ROLE_KEY:
+        try:
+            supabase_service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+            app.logger.info("Supabase (service role) client criado com sucesso.")
+        except Exception as e:
+            app.logger.exception("Falha ao criar supabase service client: %s", e)
+            supabase_service = None
+    else:
+        app.logger.warning("SUPABASE_SERVICE_ROLE_KEY não definido. Uploads via server podem falhar.")
+# ----------------------------------------------------------------
+
 
 def upload_imagem_supabase(file):
     if not supabase_service:
-        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY não definido no ambiente")
+        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY não definido no ambiente — define SUPABASE_SERVICE_ROLE_KEY no Render.")
 
-    # gerar nome único
     ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "bin"
     nome_unico = f"{uuid.uuid4()}.{ext}"
-
     content_type = mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
-
-    # volta o ponteiro ao inicio (segurança)
     file.stream.seek(0)
-
-    # upload usando service role (permite bypass RLS)
-    res = supabase_service.storage.from_("imagens").upload(
-        nome_unico,
-        file.stream.read(),
-        {"content-type": content_type}
-    )
-    # se o pacote lançar erro, vai propagar — trata se quiseres
-
-    # gerar URL pública (podes usar o client anon também)
-    public_url = supabase.storage.from_("imagens").get_public_url(nome_unico)
-    # retorna tanto a url pública como o object key (nome_unico) se quiseres
+    res = supabase_service.storage.from_("imagens").upload(nome_unico, file.stream.read(), {"content-type": content_type})
+    public_url = supabase.storage.from_("imagens").get_public_url(nome_unico) if supabase else f"{SUPABASE_URL}/storage/v1/object/public/imagens/{nome_unico}"
     return public_url, nome_unico
+
 
 def ensure_google_columns():
     with db.engine.begin() as conn:
@@ -629,6 +644,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

@@ -67,8 +67,13 @@
       <a href="{{ url_for('perfil', imagem_id=current_user.id) }}">Editar Perfil</a>
     {% endif %}
 
-    {% if current_user and (current_user.email == ADMIN_EMAIL) %}
-      <a href="{{ url_for('admin') }}">Admin</a>
+    {% set _user_email = (current_user.email if current_user and current_user.email else '')|lower %}
+    {% set _admin_env = (ADMIN_EMAIL|default(''))|lower %}
+    {% if current_user and (_admin_env and _user_email == _admin_env) or (current_user and _admin_env == '') %}
+    <!-- Se ADMIN_EMAIL vazio: não mostrar, (opcional) -->
+        { % if _admin_env %}
+            <a href="{{ url_for('admin') }}">Admin</a>
+        {% endif %}
     {% endif %}
 
     <span class="mobile-menu-footer">

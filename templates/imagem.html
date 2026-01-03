@@ -119,9 +119,11 @@
           <div>
             {% if current_user and (current_user.id == u.id or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
             <form action="{{ url_for('apagar_comentario') }}" method="post" style="display:inline;">
-              <input type="hidden" name="comentario_id" value="{{ c.id }}">
-              <button type="submit" class="icon-btn" onclick="return confirm('Apagar este comentário?');">Apagar</button>
+              <input type="hidden" name="comentario_id" value="{{ comentario.ID_Comentario }}">
+              <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+              <button type="submit" class="btn btn-link">Apagar</button>
             </form>
+
             {% endif %}
           </div>
         </div>

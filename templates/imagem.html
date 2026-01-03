@@ -66,11 +66,11 @@
     <div class="card" style="margin-top:0.8rem; padding:0.75rem;">
       <h4 style="margin:0 0 0.5rem 0;">Comentários ({{ comentarios|length }})</h4>
       <div style="max-height:220px; overflow:auto;">
-        {% for c,u in comentarios[:5] %}
+        {% for c, u in comentarios[:5] %}
         <div style="display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.5rem;">
-          <img src="{{ u.foto_url if u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:34px;height:34px;border-radius:50%;">
+          <img src="{{ u.foto_url if u and u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:34px;height:34px;border-radius:50%; object-fit:cover;">
           <div>
-            <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome }}</strong></a>
+            <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome if u else 'Anónimo' }}</strong></a>
             <div class="small" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.texto }}</div>
           </div>
         </div>
@@ -95,7 +95,7 @@
   <form action="{{ url_for('comentario') }}" method="post" class="form-comentario" style="margin-bottom:1rem;">
     <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
     <div style="display:flex; gap:0.6rem; align-items:flex-start;">
-      <img src="{{ current_user.foto_url if current_user and current_user.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;border-radius:50%;">
+      <img src="{{ current_user.foto_url if current_user and current_user.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;border-radius:50%; object-fit:cover;">
       <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" style="flex:1; padding:0.6rem; border-radius:0.5rem; border:1px solid var(--border);"></textarea>
     </div>
     <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
@@ -109,21 +109,20 @@
   <div class="comentarios-lista">
     {% for c, u in comentarios %}
     <div class="comentario" style="display:flex; gap:0.8rem; align-items:flex-start; padding:0.6rem 0; border-bottom:1px solid rgba(0,0,0,0.04);">
-      <img src="{{ u.foto_url if u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:44px;height:44px;border-radius:50%;">
+      <img src="{{ u.foto_url if u and u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:44px;height:44px;border-radius:50%; object-fit:cover;">
       <div style="flex:1;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome }}</strong></a>
+            <a href="{{ url_for('perfil', imagem_id=(u.id if u else 0)) }}"><strong>{{ u.nome if u else 'Anónimo' }}</strong></a>
             <div class="small" style="display:inline-block; margin-left:0.5rem; color:var(--muted);">{{ c.data.strftime('%Y-%m-%d %H:%M') if c.data else '' }}</div>
           </div>
           <div>
-            {% if current_user and (current_user.id == u.id or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
+            {% if current_user and (current_user.id == (u.id if u else 0) or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
             <form action="{{ url_for('apagar_comentario') }}" method="post" style="display:inline;">
-              <input type="hidden" name="comentario_id" value="{{ comentario.ID_Comentario }}">
+              <input type="hidden" name="comentario_id" value="{{ c.id }}">
               <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-              <button type="submit" class="btn btn-link">Apagar</button>
+              <button type="submit" class="btn btn-link" onclick="return confirm('Apagar comentário?');">Apagar</button>
             </form>
-
             {% endif %}
           </div>
         </div>
@@ -168,7 +167,7 @@ document.addEventListener("DOMContentLoaded", function() {
       })
       .catch(err => {
         console.error(err);
-        // fallback: submit form (deixa degradar graciosamente)
+        // fallback: submit form (graceful degrade)
         const f = document.createElement("form");
         f.method = "POST";
         f.action = "{{ url_for('reacao') }}";
@@ -179,7 +178,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // tornar botões de like visualmente interativos (hover)
+  // estilos dinâmicos pequenos
   const style = document.createElement('style');
   style.innerHTML = `
     .like-btn { padding:0.35rem 0.6rem; border-radius:0.45rem; border:1px solid var(--border); background:transparent; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem; }

@@ -71,9 +71,10 @@
     {% set _admin_env = (ADMIN_EMAIL|default(''))|lower %}
     {% if current_user and (_admin_env and _user_email == _admin_env) or (current_user and _admin_env == '') %}
     <!-- Se ADMIN_EMAIL vazio: não mostrar, (opcional) -->
-        { % if _admin_env %}
+        {% if current_user and current_user.email and (current_user.email|lower in ADMIN_EMAILS) %}
             <a href="{{ url_for('admin') }}">Admin</a>
         {% endif %}
+
     {% endif %}
 
     <span class="mobile-menu-footer">

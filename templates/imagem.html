@@ -1,37 +1,97 @@
 {% extends "base.html" %}
 {% block content %}
-<article class="imagem-detalhe">
-    <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}">
-    <h2>{{ imagem.titulo }}</h2>
-    <p>Autor ID: {{ imagem.id_utilizador }}</p>
 
-    {% if imagem.categoria_obj %}
-        <p>Categoria: <span class="badge">{{ imagem.categoria_obj.nome }}</span></p>
-    {% endif %}
+<div class="imagem-detalhe">
 
-    <div class="reacoes">
-        <form method="post" action="{{ url_for('reacao') }}">
-            <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-            <button name="tipo" value="like">👍 Like ({{ likes }})</button>
-        </form>
+    <!-- Imagem -->
+    <div class="imagem-box">
+        <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}">
     </div>
 
-    <section class="comentarios">
-        <h3>Comentários</h3>
-        {% for c in comentarios %}
-          <div class="comentario">
-              <p>{{ c.texto }}</p>
-              <small>{{ c.data.strftime('%d/%m/%Y %H:%M') }}</small>
-          </div>
-        {% else %}
-          <p>Sem comentários ainda.</p>
-        {% endfor %}
+    <!-- Info principal -->
+    <div class="imagem-info">
 
-        <form method="post" action="{{ url_for('comentario') }}" class="form-comentario">
-            <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-            <textarea name="texto" maxlength="140" placeholder="Escreve um comentário curto..." required></textarea>
-            <button type="submit">Comentar</button>
+        <h2>{{ imagem.titulo }}</h2>
+
+        <!-- Autor do post -->
+        {% if autor %}
+        <div class="autor-post">
+            <img src="{{ autor.foto_url }}" class="avatar">
+            <a href="{{ url_for('perfil', imagem_id=autor.id) }}">
+                {{ autor.nome }}
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Categoria -->
+        {% if imagem.categoria_texto %}
+        <p class="categoria">
+            Categoria: <strong>{{ imagem.categoria_texto }}</strong>
+        </p>
+        {% endif %}
+
+        <!-- Likes -->
+        <div class="likes-area">
+            <form action="{{ url_for('reacao') }}" method="post">
+                <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+                <input type="hidden" name="tipo" value="like">
+                <button type="submit" class="like-btn">
+                    ❤️ {{ likes }}
+                </button>
+            </form>
+        </div>
+
+        <!-- Apagar imagem -->
+        {% if current_user and (current_user.id == imagem.id_utilizador or (current_user.email|lower in ADMIN_EMAILS)) %}
+        <form action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" method="post"
+              onsubmit="return confirm('Tens a certeza que queres apagar esta imagem?');">
+            <button type="submit" class="btn-danger">
+                Apagar imagem
+            </button>
         </form>
-    </section>
-</article>
+        {% endif %}
+
+    </div>
+
+</div>
+
+<hr>
+
+<!-- Comentários -->
+<div class="comentarios">
+
+    <h3>Comentários ({{ comentarios|length }})</h3>
+
+    {% if current_user %}
+    <form action="{{ url_for('comentario') }}" method="post" class="comentario-form">
+        <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+        <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140"></textarea>
+        <button type="submit">Comentar</button>
+    </form>
+    {% else %}
+    <p>Faz login para comentar.</p>
+    {% endif %}
+
+    <div class="comentarios-lista">
+        {% for c, u in comentarios %}
+        <div class="comentario">
+
+            <img src="{{ u.foto_url }}" class="avatar-sm">
+
+            <div class="comentario-conteudo">
+                <a href="{{ url_for('perfil', imagem_id=u.id) }}">
+                    <strong>{{ u.nome }}</strong>
+                </a>
+
+                <p>{{ c.texto }}</p>
+            </div>
+
+        </div>
+        {% else %}
+        <p>Sem comentários ainda.</p>
+        {% endfor %}
+    </div>
+
+</div>
+
 {% endblock %}

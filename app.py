@@ -484,17 +484,21 @@ def api_imagens():
     total = query.count()
     items = query.order_by(Imagem.data_upload.desc()).offset((page - 1) * per).limit(per).all()
     def to_dict(img):
+    caminho = getattr(img, "caminho_armazenamento", "")
+    url_publica = caminho if caminho.startswith("http") else request.host_url.rstrip("/") + caminho
+
         return {
             "id": getattr(img, "id", None),
             "titulo": getattr(img, "titulo", None),
-            "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
-            "url_publica": request.host_url.rstrip("/") + getattr(img, "caminho_armazenamento", ""),
+            "caminho_armazenamento": caminho,
+            "url_publica": url_publica,
             "categoria_texto": getattr(img, "categoria_texto", None),
             "id_categoria": getattr(img, "id_categoria", None),
             "tags": getattr(img, "tags", None),
             "id_utilizador": getattr(img, "id_utilizador", None),
             "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None
         }
+
     return jsonify({
         "total": total,
         "page": page,
@@ -507,11 +511,14 @@ def api_imagem_detail(imagem_id):
     img = Imagem.query.get_or_404(imagem_id)
     votos = db.session.query(func.count(Voto.id)).filter(Voto.id_imagem == imagem_id).scalar() or 0
     num_comentarios = Comentario.query.filter_by(id_imagem=imagem_id).count()
+    caminho = getattr(img, "caminho_armazenamento", "")
+    url_publica = caminho if caminho.startswith("http") else request.host_url.rstrip("/") + caminho
+
     data = {
         "id": getattr(img, "id", None),
         "titulo": getattr(img, "titulo", None),
-        "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
-        "url_publica": request.host_url.rstrip("/") + getattr(img, "caminho_armazenamento", ""),
+        "caminho_armazenamento": caminho,
+        "url_publica": url_publica,
         "categoria_texto": getattr(img, "categoria_texto", None),
         "id_categoria": getattr(img, "id_categoria", None),
         "tags": getattr(img, "tags", None),
@@ -520,6 +527,7 @@ def api_imagem_detail(imagem_id):
         "votos": int(votos),
         "comentarios": int(num_comentarios)
     }
+
 
     return jsonify(data)
 
@@ -644,6 +652,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

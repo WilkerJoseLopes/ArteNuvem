@@ -23,6 +23,10 @@ from authlib.integrations.flask_client import OAuth
 
 from sqlalchemy import text
 
+from supabase import create_client
+import uuid
+import mimetypes
+
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -37,6 +41,27 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 db.init_app(app)
+
+supabase = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_KEY")
+)
+
+def upload_imagem_supabase(file):
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    nome_unico = f"{uuid.uuid4()}.{ext}"
+
+    content_type = mimetypes.guess_type(file.filename)[0] or "image/jpeg"
+
+    supabase.storage.from_("imagens").upload(
+        nome_unico,
+        file.read(),
+        {"content-type": content_type}
+    )
+
+    public_url = supabase.storage.from_("imagens").get_public_url(nome_unico)
+    return public_url
+
 
 def ensure_google_columns():
     with db.engine.begin() as conn:
@@ -586,5 +611,6 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 

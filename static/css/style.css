@@ -1,5 +1,34 @@
 /* :contentReference[oaicite:1]{index=1} */
 /* Theme variables */
+/* like button visual */
+.like-btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    font-weight:600;
+    cursor: pointer;
+}
+
+.like-btn:hover {
+    background: rgba(220,36,36,0.06); /* hover leve quando não liked */
+}
+
+/* estado liked: verde */
+.like-btn.liked {
+    background: #16a34a;
+    color: #fff;
+    border-color: #15803d;
+}
+
+/* quando hover sob liked -> vermelho (pediste) */
+.like-btn.liked:hover {
+    background: #dc2626;
+    border-color: #b91c1c;
+    color: #fff;
+}
+
 :root {
     --bg: #0f172a;
     --bg-elevated: #020617;
@@ -443,3 +472,4 @@ a:focus, button:focus, input:focus {
 }
 
 /* End of file */
+

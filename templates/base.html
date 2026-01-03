@@ -63,8 +63,7 @@
     {% if current_user %}
       <a href="{{ url_for('publicar') }}">Publicar imagem</a>
       <a href="{{ url_for('exportar_exposicao') }}">Exportar Exposição (PDF)</a>
-      <a href="{{ url_for('perfil', imagem_id=current_user.id) }}">Meu Perfil</a>
-      <a href="{{ url_for('perfil', imagem_id=current_user.id) }}">Editar Perfil</a>
+      <a href="{{ url_for('perfil', imagem_id=current_user.id) }}">Perfil</a>
     {% endif %}
 
     {% set _user_email = (current_user.email if current_user and current_user.email else '')|lower %}

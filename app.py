@@ -23,6 +23,9 @@ from authlib.integrations.flask_client import OAuth
 
 from sqlalchemy import text
 
+import traceback
+from flask import make_response
+
 from supabase import create_client
 import uuid
 import mimetypes
@@ -80,7 +83,12 @@ else:
     else:
         app.logger.warning("SUPABASE_SERVICE_ROLE_KEY não definido. Uploads via server podem falhar.")
 # ----------------------------------------------------------------
-
+@app.errorhandler(500)
+def internal_error(e):
+    tb = traceback.format_exc()
+    app.logger.error("Unhandled Exception on request: %s\n%s", request.path, tb)
+    # devolve uma página simples (evita expor stacktrace ao user)
+    return make_response(render_template("500.html", message=str(e)), 500)
 
 def upload_imagem_supabase(file):
     if not supabase_service:
@@ -229,7 +237,7 @@ def index():
 def imagem_detalhe(imagem_id):
     img = Imagem.query.get_or_404(imagem_id)
 
-    autor = Utilizador.query.get(img.id_utilizador)
+    autor = Utilizador.query.get(img.id_utilizador) if img.id_utilizador else None
 
     comentarios = (
         db.session.query(Comentario, Utilizador)
@@ -239,18 +247,27 @@ def imagem_detalhe(imagem_id):
         .all()
     )
 
-    likes = Reacao.query.filter_by(
-        id_imagem=imagem_id,
-        tipo="like"
-    ).count()
+    # total likes
+    likes = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
+
+    # se houver um user logado, verifica se ele já deu like (para evitar queries no template)
+    user = current_user()
+    user_liked = False
+    if user:
+        user_liked = (
+            Reacao.query.filter_by(id_imagem=imagem_id, id_utilizador=user.id, tipo="like").first()
+            is not None
+        )
 
     return render_template(
         "imagem.html",
         imagem=img,
         autor=autor,
         comentarios=comentarios,
-        likes=likes
+        likes=likes,
+        user_liked=user_liked
     )
+
 
 
 @app.route("/publicar", methods=["GET", "POST"])
@@ -778,6 +795,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

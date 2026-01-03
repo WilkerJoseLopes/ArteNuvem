@@ -1,97 +1,175 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="imagem-detalhe">
+<div class="imagem-detalhe grid" style="grid-template-columns: 1fr 360px; gap: 1.25rem; align-items:start;">
 
-    <!-- Imagem -->
-    <div class="imagem-box">
-        <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}">
+  <!-- COLUNA: IMAGEM -->
+  <div class="imagem-box card" style="padding:0;">
+    <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}" style="width:100%; display:block; border-radius:0.5rem 0.5rem 0 0;">
+    <div class="card-body">
+      <h2 style="margin:0 0 0.5rem 0;">{{ imagem.titulo }}</h2>
+      {% if imagem.tags %}
+        <div style="margin-bottom:0.5rem;">
+          {% for t in (imagem.tags.split(',') if imagem.tags else []) %}
+            <span class="badge" style="margin-right:0.35rem;">{{ t.strip() }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <p class="small">Publicado: {{ imagem.data_upload.strftime('%Y-%m-%d %H:%M') if imagem.data_upload else '' }}</p>
+    </div>
+  </div>
+
+  <!-- COLUNA: SIDEBAR INFO / ACTIONS -->
+  <aside>
+    <!-- Autor -->
+    <div class="card" style="padding:0.75rem; display:flex; gap:0.75rem; align-items:center;">
+      <img src="{{ autor.foto_url if autor else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:48px;height:48px;">
+      <div>
+        <a href="{{ url_for('perfil', imagem_id=autor.id if autor else 0) }}" style="text-decoration:none; color:inherit;">
+          <div style="font-weight:700;">{{ autor.nome if autor else 'Anónimo' }}</div>
+        </a>
+        <div class="small">ID: {{ autor.id if autor else '—' }}</div>
+      </div>
     </div>
 
-    <!-- Info principal -->
-    <div class="imagem-info">
+    <!-- Categoria / Ações -->
+    <div class="card" style="margin-top:0.8rem; padding:0.75rem;">
+      {% if imagem.categoria_texto %}
+      <div style="margin-bottom:0.5rem;">Categoria: <strong>{{ imagem.categoria_texto }}</strong></div>
+      {% endif %}
 
-        <h2>{{ imagem.titulo }}</h2>
+      <!-- Like area - updated via JS -->
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+        <button id="likeBtn" class="like-btn {% if current_user and Reacao.query.filter_by(id_imagem=imagem.id, id_utilizador=(current_user.id if current_user else None), tipo='like').first() %}liked{% endif %}"
+                data-imagem-id="{{ imagem.id }}" aria-pressed="false">
+          <span id="likeHeart">❤️</span> <span id="likeCount">{{ likes }}</span>
+        </button>
 
-        <!-- Autor do post -->
-        {% if autor %}
-        <div class="autor-post">
-            <img src="{{ autor.foto_url }}" class="avatar">
-            <a href="{{ url_for('perfil', imagem_id=autor.id) }}">
-                {{ autor.nome }}
-            </a>
-        </div>
-        {% endif %}
-
-        <!-- Categoria -->
-        {% if imagem.categoria_texto %}
-        <p class="categoria">
-            Categoria: <strong>{{ imagem.categoria_texto }}</strong>
-        </p>
-        {% endif %}
-
-        <!-- Likes -->
-        <div class="likes-area">
-            <form action="{{ url_for('reacao') }}" method="post">
-                <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-                <input type="hidden" name="tipo" value="like">
-                <button type="submit" class="like-btn">
-                    ❤️ {{ likes }}
-                </button>
-            </form>
-        </div>
-
-        <!-- Apagar imagem -->
+        <!-- delete button for owner/admin -->
         {% if current_user and (current_user.id == imagem.id_utilizador or (current_user.email|lower in ADMIN_EMAILS)) %}
-        <form action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" method="post"
-              onsubmit="return confirm('Tens a certeza que queres apagar esta imagem?');">
-            <button type="submit" class="btn-danger">
-                Apagar imagem
-            </button>
+        <form action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" method="post" style="margin:0;">
+          <button type="submit" class="icon-btn" onclick="return confirm('Apagar esta imagem?');">Apagar</button>
         </form>
         {% endif %}
+      </div>
 
+      <div class="small">Link público: <a href="{{ imagem.caminho_armazenamento }}" target="_blank" style="color:inherit; text-decoration:underline;">Abrir imagem</a></div>
     </div>
 
-</div>
-
-<hr>
-
-<!-- Comentários -->
-<div class="comentarios">
-
-    <h3>Comentários ({{ comentarios|length }})</h3>
-
-    {% if current_user %}
-    <form action="{{ url_for('comentario') }}" method="post" class="comentario-form">
-        <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-        <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140"></textarea>
-        <button type="submit">Comentar</button>
-    </form>
-    {% else %}
-    <p>Faz login para comentar.</p>
-    {% endif %}
-
-    <div class="comentarios-lista">
-        {% for c, u in comentarios %}
-        <div class="comentario">
-
-            <img src="{{ u.foto_url }}" class="avatar-sm">
-
-            <div class="comentario-conteudo">
-                <a href="{{ url_for('perfil', imagem_id=u.id) }}">
-                    <strong>{{ u.nome }}</strong>
-                </a>
-
-                <p>{{ c.texto }}</p>
-            </div>
-
+    <!-- Comentários (sidebar pequeno preview) -->
+    <div class="card" style="margin-top:0.8rem; padding:0.75rem;">
+      <h4 style="margin:0 0 0.5rem 0;">Comentários ({{ comentarios|length }})</h4>
+      <div style="max-height:220px; overflow:auto;">
+        {% for c,u in comentarios[:5] %}
+        <div style="display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.5rem;">
+          <img src="{{ u.foto_url }}" class="avatar-sm" style="width:34px;height:34px;">
+          <div>
+            <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome }}</strong></a>
+            <div class="small">{{ c.texto }}</div>
+          </div>
         </div>
-        {% else %}
-        <p>Sem comentários ainda.</p>
         {% endfor %}
+      </div>
+      <div style="margin-top:0.5rem;">
+        <a href="#comments-full" class="btn-link">Ver todos / Comentar</a>
+      </div>
     </div>
 
+  </aside>
 </div>
+
+<!-- FULL COMMENTS SECTION -->
+<hr style="margin:1.25rem 0;">
+<div id="comments-full" class="comentarios">
+  <h3>Comentários ({{ comentarios|length }})</h3>
+
+  {% if current_user %}
+  <form action="{{ url_for('comentario') }}" method="post" class="form-comentario" style="margin-bottom:1rem;">
+    <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+    <div style="display:flex; gap:0.6rem; align-items:flex-start;">
+      <img src="{{ current_user.foto_url if current_user else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;">
+      <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" style="flex:1; padding:0.6rem; border-radius:0.5rem; border:1px solid var(--border);"></textarea>
+    </div>
+    <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+      <button type="submit">Comentar</button>
+    </div>
+  </form>
+  {% else %}
+  <p>Faz login para comentar.</p>
+  {% endif %}
+
+  <div class="comentarios-lista">
+    {% for c, u in comentarios %}
+    <div class="comentario" style="display:flex; gap:0.8rem; align-items:flex-start;">
+      <img src="{{ u.foto_url }}" class="avatar-sm" style="width:44px;height:44px;">
+      <div style="flex:1;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome }}</strong></a>
+            <div class="small" style="display:inline-block; margin-left:0.5rem;">{{ c.data.strftime('%Y-%m-%d %H:%M') if c.data else '' }}</div>
+          </div>
+          <div>
+            {% if current_user and (current_user.id == u.id or (current_user.email|lower in ADMIN_EMAILS)) %}
+            <form action="{{ url_for('apagar_comentario') }}" method="post" style="display:inline;">
+              <input type="hidden" name="comentario_id" value="{{ c.id }}">
+              <button type="submit" class="icon-btn">Apagar</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        <p style="margin:0.4rem 0 0 0;">{{ c.texto }}</p>
+      </div>
+    </div>
+    {% else %}
+    <p>Sem comentários ainda.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const likeBtn = document.getElementById("likeBtn");
+  if (!likeBtn) return;
+
+  likeBtn.addEventListener("click", function(e){
+    e.preventDefault();
+    const imagemId = likeBtn.getAttribute("data-imagem-id");
+    if (!imagemId) return;
+
+    fetch("{{ url_for('reacao_toggle') }}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ imagem_id: imagemId, tipo: "like" })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        alert("Erro: " + data.error);
+        return;
+      }
+      const liked = data.status === "liked";
+      const count = data.likes ?? null;
+      likeBtn.classList.toggle("liked", liked);
+      document.getElementById("likeCount").textContent = count;
+      // a11y
+      likeBtn.setAttribute("aria-pressed", liked ? "true" : "false");
+    })
+    .catch(err => {
+      console.error(err);
+      // fallback: submit form (deixa degradar graciosamente)
+      const f = document.createElement("form");
+      f.method = "POST";
+      f.action = "{{ url_for('reacao') }}";
+      const i1 = document.createElement("input"); i1.type="hidden"; i1.name="imagem_id"; i1.value=imagemId; f.appendChild(i1);
+      const i2 = document.createElement("input"); i2.type="hidden"; i2.name="tipo"; i2.value="like"; f.appendChild(i2);
+      document.body.appendChild(f); f.submit();
+    });
+  });
+});
+</script>
 
 {% endblock %}

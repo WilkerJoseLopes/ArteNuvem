@@ -484,8 +484,12 @@ def api_imagens():
     total = query.count()
     items = query.order_by(Imagem.data_upload.desc()).offset((page - 1) * per).limit(per).all()
     def to_dict(img):
-    caminho = getattr(img, "caminho_armazenamento", "")
-    url_publica = caminho if caminho.startswith("http") else request.host_url.rstrip("/") + caminho
+        caminho = getattr(img, "caminho_armazenamento", "") or ""
+        # se caminho já for um URL completo, usa ele; se for caminho local, concatena com host
+        if caminho.startswith("http://") or caminho.startswith("https://"):
+            url_publica = caminho
+        else:
+            url_publica = request.host_url.rstrip("/") + caminho
 
         return {
             "id": getattr(img, "id", None),
@@ -511,8 +515,11 @@ def api_imagem_detail(imagem_id):
     img = Imagem.query.get_or_404(imagem_id)
     votos = db.session.query(func.count(Voto.id)).filter(Voto.id_imagem == imagem_id).scalar() or 0
     num_comentarios = Comentario.query.filter_by(id_imagem=imagem_id).count()
-    caminho = getattr(img, "caminho_armazenamento", "")
-    url_publica = caminho if caminho.startswith("http") else request.host_url.rstrip("/") + caminho
+        caminho = getattr(img, "caminho_armazenamento", "") or ""
+    if caminho.startswith("http://") or caminho.startswith("https://"):
+        url_publica = caminho
+    else:
+        url_publica = request.host_url.rstrip("/") + caminho
 
     data = {
         "id": getattr(img, "id", None),
@@ -527,6 +534,7 @@ def api_imagem_detail(imagem_id):
         "votos": int(votos),
         "comentarios": int(num_comentarios)
     }
+
 
 
     return jsonify(data)
@@ -652,6 +660,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

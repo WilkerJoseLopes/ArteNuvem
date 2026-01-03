@@ -361,6 +361,7 @@ def comentario():
     db.session.commit()
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
 
+# fallback (mantém compatibilidade com forms antigos)
 @app.route("/reacao", methods=["POST"])
 @login_required
 def reacao():
@@ -370,7 +371,7 @@ def reacao():
     if not tipo or not imagem_id:
         return redirect(url_for("index"))
 
-    user = current_user
+    user = current_user()  # <<--- NOTE: chamada da função
 
     existente = Reacao.query.filter_by(
         tipo=tipo,
@@ -379,18 +380,57 @@ def reacao():
     ).first()
 
     if existente:
-        return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+        db.session.delete(existente)
+        db.session.commit()
+    else:
+        nova = Reacao(tipo=tipo, id_imagem=imagem_id, id_utilizador=user.id)
+        db.session.add(nova)
+        db.session.commit()
 
-    nova = Reacao(
+    return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+
+
+# AJAX toggle endpoint -> devolve JSON { status: "liked"|"unliked", likes: N }
+@app.route("/reacao/toggle", methods=["POST"])
+@login_required
+def reacao_toggle():
+    # aceita form ou json
+    if request.is_json:
+        data = request.get_json()
+        imagem_id = int(data.get("imagem_id", 0))
+        tipo = data.get("tipo", "like")
+    else:
+        imagem_id = request.form.get("imagem_id", type=int)
+        tipo = request.form.get("tipo", "like")
+
+    if not imagem_id or not tipo:
+        return jsonify({"error": "missing parameters"}), 400
+
+    user = current_user()
+
+    existente = Reacao.query.filter_by(
         tipo=tipo,
         id_imagem=imagem_id,
         id_utilizador=user.id
-    )
+    ).first()
 
-    db.session.add(nova)
-    db.session.commit()
+    if existente:
+        db.session.delete(existente)
+        db.session.commit()
+        status = "unliked"
+    else:
+        nova = Reacao(tipo=tipo, id_imagem=imagem_id, id_utilizador=user.id)
+        db.session.add(nova)
+        try:
+            db.session.commit()
+            status = "liked"
+        except Exception:
+            db.session.rollback()
+            return jsonify({"error": "db error"}), 500
 
-    return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+    likes = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
+
+    return jsonify({"status": status, "likes": likes})
 
 
 @app.route("/exposicao")
@@ -738,6 +778,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

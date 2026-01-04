@@ -368,6 +368,10 @@ def publicar():
         )
         if tags:
             img.tags = tags
+            
+        selected = request.form.getlist("exposicoes")  # lista de ids como strings
+        if selected:
+        img.exposicoes_ids = ",".join([str(int(x)) for x in selected if x])
 
         db.session.add(img)
         db.session.commit()
@@ -930,6 +934,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

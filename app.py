@@ -126,6 +126,32 @@ def ensure_google_columns():
             ALTER TABLE comentario
             ADD COLUMN IF NOT EXISTS "ID_Comentario_Pai" INTEGER;
         '''))
+                conn.execute(text('''
+            ALTER TABLE exposicao
+            ADD COLUMN IF NOT EXISTS "Descricao" VARCHAR(500);
+        '''))
+        conn.execute(text('''
+            ALTER TABLE exposicao
+            ADD COLUMN IF NOT EXISTS "Start_Date" DATE;
+        '''))
+        conn.execute(text('''
+            ALTER TABLE exposicao
+            ADD COLUMN IF NOT EXISTS "End_Date" DATE;
+        '''))
+        conn.execute(text('''
+            ALTER TABLE exposicao
+            ADD COLUMN IF NOT EXISTS "Mes_Inteiro" BOOLEAN DEFAULT FALSE;
+        '''))
+        conn.execute(text('''
+            ALTER TABLE exposicao
+            ADD COLUMN IF NOT EXISTS "Categoria_ID" INTEGER;
+        '''))
+
+        conn.execute(text('''
+            ALTER TABLE imagem
+            ADD COLUMN IF NOT EXISTS "Exposicoes_Ids" VARCHAR(300);
+        '''))
+
         # opcional: criar FK só se não existir (Postgres não tem ADD CONSTRAINT IF NOT EXISTS em todas as versões,
         # por isso tentamos criar e ignoramos erro)
         try:
@@ -851,6 +877,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

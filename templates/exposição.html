@@ -1,17 +1,87 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Exposições disponíveis</h1>
 
-<div class="grid">
-    {% for e in exposicoes %}
-    <div class="card">
-        <div class="card-body">
-            <h3>{{ e.nome }}</h3>
-            <p>Mês: {{ e.mes }}</p>
+{% if exposicao %}
+<section class="exposicao-detalhe">
+    <h1>{{ exposicao.nome }}</h1>
+
+    {% if exposicao.descricao %}
+        <p class="exposicao-descricao">{{ exposicao.descricao }}</p>
+    {% endif %}
+
+    <div class="exposicao-meta">
+        {% if exposicao.mes_inteiro %}
+            <span>Período: mês inteiro ({{ exposicao.mes }})</span>
+        {% else %}
+            <span>Período: {{ exposicao.start_date }} → {{ exposicao.end_date }}</span>
+        {% endif %}
+    </div>
+
+    <hr>
+
+    <h2>Top 10 imagens mais curtidas</h2>
+
+    {% if top %}
+    <div class="grid imagens-grid">
+        {% for img, votos in top %}
+        <div class="card imagem-card">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
+            </a>
+            <div class="card-body">
+                <h4>{{ img.titulo }}</h4>
+                <p>{{ votos }} like{{ 's' if votos != 1 }}</p>
+            </div>
         </div>
+        {% endfor %}
     </div>
     {% else %}
-    <p>Sem exposições registadas.</p>
-    {% endfor %}
-</div>
+        <p>Sem imagens nesta exposição ainda.</p>
+    {% endif %}
+
+    <div class="exposicao-acoes">
+        <a class="btn" href="{{ url_for('index', exposicao_id=exposicao.id) }}">
+            Ver todas as imagens desta exposição
+        </a>
+    </div>
+</section>
+
+{% else %}
+
+<section class="exposicoes-lista">
+    <h1>Exposições disponíveis</h1>
+
+    {% if exposicoes %}
+    <div class="grid exposicoes-grid">
+        {% for e in exposicoes %}
+        <div class="card exposicao-card">
+            <div class="card-body">
+                <h3>{{ e.nome }}</h3>
+
+                {% if e.descricao %}
+                    <p>{{ e.descricao }}</p>
+                {% endif %}
+
+                <p class="exposicao-periodo">
+                    {% if e.mes_inteiro %}
+                        Mês inteiro: {{ e.mes }}
+                    {% else %}
+                        {{ e.start_date }} → {{ e.end_date }}
+                    {% endif %}
+                </p>
+
+                <a class="btn" href="{{ url_for('exposicao') }}?exposicao_id={{ e.id }}">
+                    Ver exposição
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p>Sem exposições registadas.</p>
+    {% endif %}
+</section>
+
+{% endif %}
+
 {% endblock %}

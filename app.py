@@ -541,15 +541,55 @@ def reacao_toggle():
 
 @app.route("/exposicao")
 def exposicao():
-    exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
-    categorias = Categoria.query.all()
-    return render_template(
-        "exposição.html",
-        exposicoes=exposicoes,
-        categorias=categorias,
-        query_text="",
-        selected_categoria=None,
-    )
+    exposicao_id = request.args.get("exposicao_id", type=int)
+    if exposicao_id:
+        e = Exposicao.query.get_or_404(exposicao_id)
+        # montar query de imagens que participam:
+        q = Imagem.query
+        # 1) imagens explicitamente inscritas (exposicoes_ids CSV)
+        cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{e.id}%")
+        # 2) imagens dentro do intervalo (se definido)
+        cond_intervalo = True
+        if e.start_date and e.end_date:
+            cond_intervalo = (Imagem.data_upload >= datetime.combine(e.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(e.end_date, datetime.max.time()))
+        # 3) aplicar filtros de categoria/tags se configurado
+        if e.usar_categorias and e.categoria_id:
+            q = q.filter((cond_inscritas) | ( (Imagem.id_categoria == e.categoria_id) & cond_intervalo ))
+        elif e.usar_tags and e.tags_filtro:
+            # simples: verifica se qualquer tag está contida em Imagem.tags (LIKE)
+            tags = [t.strip() for t in (e.tags_filtro or "").split(",") if t.strip()]
+            tag_cond = False
+            for t in tags:
+                tag_cond = tag_cond | Imagem.tags.ilike(f"%{t}%")
+            q = q.filter((cond_inscritas) | ( tag_cond & cond_intervalo ))
+        else:
+            q = q.filter((cond_inscritas) | cond_intervalo)
+
+        # calcular top10 por número de votos (Voto)
+        top = (
+            db.session.query(Imagem, func.count(Voto.id).label("total_votos"))
+            .select_from(q.subquery())  # nem todas as versões ORM aceitam diretamente; se der problema faz versão alternativa abaixo
+            .outerjoin(Voto, Voto.id_imagem == Imagem.id)
+            .group_by(Imagem.id)
+            .order_by(desc("total_votos"))
+            .limit(10)
+            .all()
+        )
+
+        # fallback simpler (se a linha acima der erro), usa query manual:
+        # top = (db.session.query(Imagem, func.count(Voto.id).label("total_votos"))
+        #        .outerjoin(Voto, Voto.id_imagem == Imagem.id)
+        #        .filter(Imagem.id.in_([i.id for i in q.all()]))
+        #        .group_by(Imagem.id)
+        #        .order_by(desc("total_votos"))
+        #        .limit(10)
+        #        .all())
+
+        return render_template("exposição.html", exposicao=e, top=top)
+    else:
+        exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
+        return render_template("exposição.html", exposicoes=exposicoes)
+
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
@@ -934,6 +974,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

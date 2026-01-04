@@ -3,62 +3,138 @@
 <h1>Painel de Administração</h1>
 
 <section class="admin-section">
-    <h2>Categorias</h2>
-    <form method="post" class="form">
-        <input type="hidden" name="action" value="create_categoria">
-        <label>Nova categoria</label>
-        <input type="text" name="nome" placeholder="Nome da categoria" required>
-        <button type="submit">Adicionar</button>
-    </form>
+  <h2>Criar nova exposição</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="action" value="create_exposicao">
 
-    <h3>Existentes</h3>
-    <ul class="lista-simples">
-        {% for c in categorias %}
-            <li>{{ c.nome }}</li>
-        {% else %}
-            <li>Sem categorias definidas.</li>
-        {% endfor %}
-    </ul>
-</section>
+    <label>Nome da Exposição</label>
+    <input type="text" name="nome" placeholder="Ex: Exposição de Maio" required>
 
-<section class="admin-section">
-    <h2>Criar nova exposição</h2>
-    <form method="post" class="form">
-        <input type="hidden" name="action" value="create_exposicao">
-        <label>Nome da Exposição</label>
-        <input type="text" name="nome" placeholder="Ex: Exposição de Maio" required>
-        <label>Mês</label>
-        <input type="text" name="mes" placeholder="Ex: Maio 2025" required>
-        <button type="submit">Criar Exposição</button>
-    </form>
-</section>
+    <label>Descrição (opcional)</label>
+    <textarea name="descricao" placeholder="Descrição breve"></textarea>
 
-<section class="admin-section">
-    <h2>Exposições existentes</h2>
+    <label>Escolher Categoria (opcional)</label>
+    <select name="categoria_id">
+      <option value="">(Sem categoria)</option>
+      {% for c in categorias %}
+        <option value="{{ c.id }}">{{ c.nome }}</option>
+      {% endfor %}
+    </select>
 
-    {% for e in exposicoes %}
-    <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-        <form method="post" class="form">
-            <input type="hidden" name="action" value="update_exposicao">
-            <input type="hidden" name="exposicao_id" value="{{ e.id }}">
+    <label>Filtro por tags (opcional, separadas por vírgula)</label>
+    <input type="text" name="tags_filtro" placeholder="tag1, tag2">
 
-            <label>Nome</label>
-            <input type="text" name="nome" value="{{ e.nome }}">
-
-            <label>Mês</label>
-            <input type="text" name="mes" value="{{ e.mes }}">
-
-            <button type="submit">Guardar alterações</button>
-        </form>
-
-        <form method="post" style="margin-top: 0.5rem;">
-            <input type="hidden" name="action" value="delete_exposicao">
-            <input type="hidden" name="exposicao_id" value="{{ e.id }}">
-            <button type="submit" style="background:#b91c1c;">Apagar exposição</button>
-        </form>
+    <div style="margin-top:0.5rem;">
+      <label><input type="checkbox" name="usar_tags" value="1"> Usar filtro de tags</label>
+      <label style="margin-left:0.8rem;"><input type="checkbox" name="usar_categorias" value="1" checked> Filtrar por categoria</label>
     </div>
-    {% else %}
-        <p>Sem exposições registadas.</p>
-    {% endfor %}
+
+    <hr>
+
+    <label>Definição de datas</label>
+    <div>
+      <label><input type="radio" name="tipo_periodo" value="mes_inteiro" checked> Mês inteiro</label>
+      <label style="margin-left:0.8rem;"><input type="radio" name="tipo_periodo" value="intervalo"> Dias específicos</label>
+    </div>
+
+    <div id="mes-inputs" style="margin-top:0.6rem;">
+      <label>Mês e ano</label>
+      <select name="mes" required>
+        {% for m in range(1,13) %}
+          <option value="{{ '{:02d}'.format(m) }}">{{ '{:02d}'.format(m) }}</option>
+        {% endfor %}
+      </select>
+      <select name="ano" required>
+        {% for y in range(2024, 2031) %}
+          <option value="{{ y }}">{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="intervalo-inputs" style="display:none; margin-top:0.6rem;">
+      <label>Data início</label>
+      <input type="date" name="start_date">
+      <label>Data fim</label>
+      <input type="date" name="end_date">
+    </div>
+
+    <div style="margin-top:0.8rem;">
+      <button type="submit">Criar Exposição</button>
+    </div>
+  </form>
 </section>
+
+<section class="admin-section" style="margin-top:1.2rem;">
+  <h2>Exposições existentes</h2>
+
+  {% for e in exposicoes %}
+  <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+    <form method="post" class="form">
+      <input type="hidden" name="action" value="update_exposicao">
+      <input type="hidden" name="exposicao_id" value="{{ e.id }}">
+
+      <label>Nome</label>
+      <input type="text" name="nome" value="{{ e.nome }}">
+
+      <label>Descrição</label>
+      <input type="text" name="descricao" value="{{ e.descricao or '' }}">
+
+      <label>Ativo</label>
+      <select name="ativo">
+        <option value="1" {% if e.ativo %}selected{% endif %}>Sim</option>
+        <option value="0" {% if not e.ativo %}selected{% endif %}>Não</option>
+      </select>
+
+      <label>Categoria</label>
+      <select name="categoria_id">
+        <option value="">(Sem categoria)</option>
+        {% for c in categorias %}
+          <option value="{{ c.id }}" {% if e.categoria_id == c.id %}selected{% endif %}>{{ c.nome }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Tags filtro</label>
+      <input type="text" name="tags_filtro" value="{{ e.tags_filtro or '' }}">
+
+      <div style="margin-top:0.6rem;">
+        <label>Período:</label>
+        <div>
+          {% if e.mes_inteiro %}
+            <em>Mês inteiro ({{ e.mes }})</em>
+          {% else %}
+            <em>{{ e.start_date }} → {{ e.end_date }}</em>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="margin-top:0.6rem;">
+        <button type="submit">Guardar alterações</button>
+      </div>
+    </form>
+
+    <form method="post" style="margin-top: 0.5rem;">
+      <input type="hidden" name="action" value="delete_exposicao">
+      <input type="hidden" name="exposicao_id" value="{{ e.id }}">
+      <button type="submit" style="background:#b91c1c; color:white;">Apagar exposição</button>
+    </form>
+
+    <div style="margin-top:0.6rem;">
+      <a href="{{ url_for('exportar_exposicao') }}?exposicao_id={{ e.id }}" class="btn-link">Exportar top10 (PDF)</a>
+      <a href="{{ url_for('exposicao') }}?exposicao_id={{ e.id }}" class="btn-link" style="margin-left:0.6rem;">Ver exposição</a>
+    </div>
+  </div>
+  {% else %}
+    <p>Sem exposições registadas.</p>
+  {% endfor %}
+</section>
+
+<script>
+document.querySelectorAll('input[name="tipo_periodo"]').forEach(r => {
+  r.addEventListener('change', function(){
+    const tipo = this.value;
+    document.getElementById('mes-inputs').style.display = tipo === 'mes_inteiro' ? 'block' : 'none';
+    document.getElementById('intervalo-inputs').style.display = tipo === 'intervalo' ? 'block' : 'none';
+  });
+});
+</script>
 {% endblock %}

@@ -43,6 +43,8 @@ class Imagem(db.Model):
     id_utilizador = db.Column("ID_Utilizador", db.Integer, db.ForeignKey("utilizador.ID_Utilizador"), nullable=False)
     id_categoria = db.Column("ID_Categoria", db.Integer, db.ForeignKey("categoria.ID_Categoria"), nullable=True)
     tags = db.Column("Tags", db.String(300), nullable=True)
+    exposicoes_ids = db.Column("Exposicoes_Ids", db.String(300), nullable=True)  # csv de IDs de exposições (ex: "1,3")
+
 
 
 class Comentario(db.Model):
@@ -88,6 +90,12 @@ class Exposicao(db.Model):
     usar_categorias = db.Column("Usar_Categorias", db.Boolean, default=True)
     tags_filtro = db.Column("Tags_Filtro", db.String(300), nullable=True)
     categorias_ids = db.Column("Categorias_Ids", db.String(300), nullable=True)
+    descricao = db.Column("Descricao", db.String(500), nullable=True)
+    start_date = db.Column("Start_Date", db.Date, nullable=True)
+    end_date = db.Column("End_Date", db.Date, nullable=True)
+    mes_inteiro = db.Column("Mes_Inteiro", db.Boolean, default=False)
+    categoria_id = db.Column("Categoria_ID", db.Integer, db.ForeignKey("categoria.ID_Categoria"), nullable=True)
+
 
 
 

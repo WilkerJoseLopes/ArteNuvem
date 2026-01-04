@@ -22,5 +22,15 @@
         </div>
     </div>
     <button type="submit">Publicar</button>
+    <hr>
+    <label>Participar em exposições (opcional)</label>
+    <div>
+      {% for e in exposicoes %}
+        <label style="display:block;">
+          <input type="checkbox" name="exposicoes" value="{{ e.id }}"> {{ e.nome }} — {{ e.start_date or e.mes }} {% if e.categoria_id %}(Cat: {{ e.categoria_id }}){% endif %}
+        </label>
+      {% endfor %}
+    </div>
+
 </form>
 {% endblock %}

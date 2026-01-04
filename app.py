@@ -26,6 +26,9 @@ from sqlalchemy import text
 import traceback
 from flask import make_response
 
+import calendar
+from datetime import date
+
 from supabase import create_client
 import uuid
 import mimetypes
@@ -590,6 +593,56 @@ def admin():
                 db.session.delete(e)
                 db.session.commit()
                 flash("Exposição apagada.", "success")
+                
+        elif action == "create_exposicao":
+            nome = request.form.get("nome")
+            descricao = request.form.get("descricao", "").strip() or None
+            categoria_id = request.form.get("categoria_id", type=int) or None
+            tags_filtro = request.form.get("tags_filtro", "").strip() or None
+            usar_tags = bool(request.form.get("usar_tags"))
+            usar_categorias = bool(request.form.get("usar_categorias"))
+
+            tipo_periodo = request.form.get("tipo_periodo", "mes_inteiro")
+            start = None
+            end = None
+            mes_text = request.form.get("mes")
+            ano_text = request.form.get("ano")
+
+            if tipo_periodo == "mes_inteiro" and mes_text and ano_text:
+                y = int(ano_text)
+                m = int(mes_text)
+                start = date(y, m, 1)
+                last_day = calendar.monthrange(y, m)[1]
+                end = date(y, m, last_day)
+                mes_val = f"{m:02d}/{y}"
+                mes_inteiro_flag = True
+            else:
+                sd = request.form.get("start_date")
+                ed = request.form.get("end_date")
+                if sd:
+                    start = date.fromisoformat(sd)
+                if ed:
+                    end = date.fromisoformat(ed)
+                mes_val = f"{mes_text or ''}/{ano_text or ''}"
+                mes_inteiro_flag = False
+
+            if nome:
+                e = Exposicao(
+                    nome=nome,
+                    descricao=descricao,
+                    mes=mes_val,
+                    mes_inteiro=mes_inteiro_flag,
+                    start_date=start,
+                    end_date=end,
+                    categoria_id=categoria_id,
+                    tags_filtro=tags_filtro,
+                    usar_tags=usar_tags,
+                    usar_categorias=usar_categorias,
+                    ativo=True
+                )
+                db.session.add(e)
+                db.session.commit()
+                flash("Exposição criada.", "success")
 
     categorias = Categoria.query.all()
     exposicoes = Exposicao.query.all()
@@ -877,6 +930,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

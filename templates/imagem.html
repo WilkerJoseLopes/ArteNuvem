@@ -1,236 +1,197 @@
 {% extends "base.html" %}
-{% block title %}{{ imagem.titulo }} - ArteNuvem{% endblock %}
-
 {% block content %}
-<div class="container imagem-page">
 
-  <div class="breadcrumb">
-    <a href="{{ url_for('index') }}">Início</a> ›
-    <a href="{{ url_for('index') }}{% if imagem.id_categoria %}?categoria={{ imagem.id_categoria }}{% endif %}">{{ imagem.categoria_texto or 'Categoria' }}</a> ›
-    <span>{{ imagem.titulo }}</span>
+<div class="imagem-detalhe grid" style="grid-template-columns: 1fr 360px; gap: 1.25rem; align-items:start;">
+
+  <!-- COLUNA: IMAGEM -->
+  <div class="imagem-box card" style="padding:0;">
+    <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}" style="width:100%; display:block; border-radius:0.5rem 0.5rem 0 0; object-fit:contain; max-height:75vh;">
+    <div class="card-body">
+      <h2 style="margin:0 0 0.5rem 0;">{{ imagem.titulo }}</h2>
+
+      {% if imagem.tags %}
+        <div style="margin-bottom:0.5rem;">
+          {% for t in (imagem.tags.split(',') if imagem.tags else []) %}
+            <span class="badge" style="margin-right:0.35rem;">{{ t.strip() }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <p class="small">Publicado: {{ imagem.data_upload.strftime('%Y-%m-%d %H:%M') if imagem.data_upload else '' }}</p>
+
+      <div style="margin-top:1rem;">
+        <a class="btn-link" href="{{ url_for('index') }}">← Voltar</a>
+      </div>
+    </div>
   </div>
 
-  <div class="imagem-card">
-    <div class="imagem-media">
-      <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}" class="imagem-full" onerror="this.src='/static/img/icone.png'">
-    </div>
-
-    <div class="imagem-meta">
-      <h1 class="titulo">{{ imagem.titulo }}</h1>
-
-      <div class="autor-info">
-        {% set autor_foto = (autor.Foto_URL if autor is not none else None) or (autor.foto_url if autor is not none else None) or '/static/img/icone.png' %}
-        <a class="autor-link" href="{{ url_for('perfil', user_id=autor.id) if autor else '#' }}">
-          <img src="{{ autor_foto }}" alt="avatar" class="autor-avatar" onerror="this.src='/static/img/icone.png'">
-          <div class="autor-texto">
-            <div class="autor-nome">{{ autor.nome or 'Utilizador' }}</div>
-            <div class="upload-data">{{ imagem.data_upload.strftime('%d %b %Y %H:%M') if imagem.data_upload else '' }}</div>
-          </div>
+  <!-- COLUNA: SIDEBAR INFO / ACTIONS -->
+  <aside>
+    <!-- Autor -->
+    <div class="card" style="padding:0.75rem; display:flex; gap:0.75rem; align-items:center;">
+      <img src="{{ autor.foto_url if autor and autor.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:48px;height:48px;border-radius:50%;">
+      <div>
+        <a href="{{ url_for('perfil', imagem_id=autor.id if autor else 0) }}" style="text-decoration:none; color:inherit;">
+          <div style="font-weight:700;">{{ autor.nome if autor else 'Anónimo' }}</div>
         </a>
+        <div class="small">ID: {{ autor.id if autor else '—' }}</div>
+      </div>
+    </div>
 
-        <div class="acao-area">
-          <button id="like-btn" class="btn-like {% if user_liked %}liked{% endif %}" onclick="toggleLike({{ imagem.id }})">
-            <span id="like-icon">❤</span>
-            <span id="like-count">{{ likes or 0 }}</span>
-          </button>
+    <!-- Categoria / Ações -->
+    <div class="card" style="margin-top:0.8rem; padding:0.75rem;">
+      {% if imagem.categoria_texto %}
+      <div style="margin-bottom:0.5rem;">Categoria: <strong>{{ imagem.categoria_texto }}</strong></div>
+      {% endif %}
 
-          {% if current_user and (current_user.id == imagem.id_utilizador or current_user.email in ADMIN_EMAILS) %}
-            <form id="delete-image-form" method="post" action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" style="display:inline;">
-              <button type="submit" class="btn-delete" onclick="return confirm('Apagar imagem? Esta ação é irreversível.')">Apagar</button>
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+        <button id="likeBtn"
+                class="like-btn {% if user_liked %}liked{% endif %}"
+                data-imagem-id="{{ imagem.id }}"
+                aria-pressed="{{ 'true' if user_liked else 'false' }}">
+          <span id="likeHeart">❤</span> <span id="likeCount">{{ likes }}</span>
+        </button>
+
+        {% if current_user and (current_user.id == imagem.id_utilizador or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
+        <form action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" method="post" style="margin:0;">
+          <button type="submit" class="icon-btn" onclick="return confirm('Apagar esta imagem?');">Apagar</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <div class="small">Link público: <a href="{{ imagem.caminho_armazenamento }}" target="_blank" style="color:inherit; text-decoration:underline;">Abrir imagem</a></div>
+    </div>
+
+    <!-- Comentários (preview) -->
+    <div class="card" style="margin-top:0.8rem; padding:0.75rem;">
+      <h4 style="margin:0 0 0.5rem 0;">Comentários ({{ comentarios|length }})</h4>
+      <div style="max-height:220px; overflow:auto;">
+        {% for c, u in comentarios[:5] %}
+        <div style="display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.5rem;">
+          <img src="{{ u.foto_url if u and u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:34px;height:34px;border-radius:50%; object-fit:cover;">
+          <div>
+            <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome if u else 'Anónimo' }}</strong></a>
+            <div class="small" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.texto }}</div>
+          </div>
+        </div>
+        {% else %}
+        <p class="small">Sem comentários ainda.</p>
+        {% endfor %}
+      </div>
+      <div style="margin-top:0.5rem;">
+        <a href="#comments-full" class="btn-link">Ver todos / Comentar</a>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<!-- FULL COMMENTS SECTION -->
+<hr style="margin:1.25rem 0;">
+<div id="comments-full" class="comentarios">
+  <h3>Comentários ({{ comentarios|length }})</h3>
+
+  {% if current_user %}
+  <form action="{{ url_for('comentario') }}" method="post" class="form-comentario" style="margin-bottom:1rem;">
+    <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+    <div style="display:flex; gap:0.6rem; align-items:flex-start;">
+      <img src="{{ current_user.foto_url if current_user and current_user.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;border-radius:50%; object-fit:cover;">
+      <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" style="flex:1; padding:0.6rem; border-radius:0.5rem; border:1px solid var(--border);"></textarea>
+    </div>
+    <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+      <button type="submit" class="btn">Comentar</button>
+    </div>
+  </form>
+  {% else %}
+  <p>Faz login para comentar.</p>
+  {% endif %}
+
+  <div class="comentarios-lista">
+    {% for c, u in comentarios %}
+    <div class="comentario" style="display:flex; gap:0.8rem; align-items:flex-start; padding:0.6rem 0; border-bottom:1px solid rgba(0,0,0,0.04);">
+      <img src="{{ u.foto_url if u and u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:44px;height:44px;border-radius:50%; object-fit:cover;">
+      <div style="flex:1;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <a href="{{ url_for('perfil', imagem_id=(u.id if u else 0)) }}"><strong>{{ u.nome if u else 'Anónimo' }}</strong></a>
+            <div class="small" style="display:inline-block; margin-left:0.5rem; color:var(--muted);">{{ c.data.strftime('%Y-%m-%d %H:%M') if c.data else '' }}</div>
+          </div>
+          <div>
+            {% if current_user and (current_user.id == (u.id if u else 0) or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
+            <form action="{{ url_for('apagar_comentario') }}" method="post" style="display:inline;">
+              <input type="hidden" name="comentario_id" value="{{ c.id }}">
+              <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+              <button type="submit" class="btn btn-link" onclick="return confirm('Apagar comentário?');">Apagar</button>
             </form>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="descricao">
-        <strong>Categoria:</strong> {{ imagem.categoria_texto or '—' }}<br>
-        <strong>Tags:</strong> {{ imagem.tags or '—' }}<br>
-        {% if imagem.exposicoes_ids %}
-          <strong>Exposições:</strong> {{ imagem.exposicoes_ids }}
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <section class="comentarios-section">
-    <h2>Comentários</h2>
-
-    {% if current_user %}
-      <form id="form-comentar" action="{{ url_for('comentario') }}" method="post" class="form-comentar">
-        <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-        <textarea name="texto" placeholder="Escreve um comentário (máx 140)" maxlength="140" required></textarea>
-        <div class="form-actions">
-          <button type="submit" class="btn primary">Comentar</button>
-        </div>
-      </form>
-    {% else %}
-      <div class="login-prompt">Para comentar é preciso <a href="{{ url_for('login') }}">entrar</a>.</div>
-    {% endif %}
-
-    <div id="lista-comentarios" class="lista-comentarios">
-      {% set threads = {} %}
-      {% for com, u in comentarios %}
-        {% set parent = com.ID_Comentario_Pai if com.ID_Comentario_Pai is not none else None %}
-        {% if parent %}
-          {% if threads[parent] is not defined %}
-            {% set _ = threads.update({parent: []}) %}
-          {% endif %}
-          {% set _ = threads[parent].append((com, u)) %}
-        {% endif %}
-      {% endfor %}
-
-      {% for com, u in comentarios %}
-        {% if com.ID_Comentario_Pai %}
-          {% continue %}
-        {% endif %}
-        <div class="comentario" id="comentario-{{ com.ID_Comentario }}">
-          <div class="comentario-left">
-            {% set cu_foto = (u.Foto_URL or u.foto_url) if u else None %}
-            <img src="{{ cu_foto or '/static/img/icone.png' }}" alt="avatar" class="coment-avatar" onerror="this.src='/static/img/icone.png'">
-          </div>
-          <div class="comentario-right">
-            <div class="coment-cabecalho">
-              <a href="{{ url_for('perfil', user_id=u.id) if u else '#' }}" class="coment-autor">{{ u.nome if u else 'Anónimo' }}</a>
-              <span class="coment-data">{{ com.data.strftime('%d/%m/%Y %H:%M') if com.data else '' }}</span>
-              {% if current_user and (current_user.id == com.id_utilizador or current_user.email in ADMIN_EMAILS) %}
-                <form class="apagar-coment-form" method="post" action="{{ url_for('apagar_comentario') }}">
-                  <input type="hidden" name="comentario_id" value="{{ com.ID_Comentario }}">
-                  <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-                  <button type="submit" class="btn-link small" onclick="return confirm('Apagar comentário?')">Apagar</button>
-                </form>
-              {% endif %}
-            </div>
-            <div class="coment-texto">{{ com.texto }}</div>
-
-            <div class="coment-acoes">
-              {% if current_user %}
-                <button class="btn-link small" onclick="toggleReplyForm({{ com.ID_Comentario }})">Responder</button>
-              {% endif %}
-            </div>
-
-            {% set replies = threads.get(com.ID_Comentario, []) %}
-            {% if replies %}
-              <div class="replies">
-                {% for rcom, ru in replies %}
-                  <div class="reply" id="comentario-{{ rcom.ID_Comentario }}">
-                    <img src="{{ (ru.Foto_URL or ru.foto_url) if ru else '/static/img/icone.png' }}" class="reply-avatar" onerror="this.src='/static/img/icone.png'">
-                    <div class="reply-body">
-                      <a href="{{ url_for('perfil', user_id=ru.id) if ru else '#' }}" class="reply-author">{{ ru.nome if ru else 'Anónimo' }}</a>
-                      <span class="reply-data">{{ rcom.data.strftime('%d/%m/%Y %H:%M') if rcom.data else '' }}</span>
-                      <div class="reply-text">{{ rcom.texto }}</div>
-                      {% if current_user and (current_user.id == rcom.id_utilizador or current_user.email in ADMIN_EMAILS) %}
-                        <form class="apagar-coment-form" method="post" action="{{ url_for('apagar_comentario') }}">
-                          <input type="hidden" name="comentario_id" value="{{ rcom.ID_Comentario }}">
-                          <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-                          <button type="submit" class="btn-link small" onclick="return confirm('Apagar resposta?')">Apagar</button>
-                        </form>
-                      {% endif %}
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
             {% endif %}
-
-            <div class="reply-form-area" id="reply-form-{{ com.ID_Comentario }}" style="display:none;">
-              {% if current_user %}
-                <form method="post" action="{{ url_for('comentario') }}">
-                  <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-                  <input type="hidden" name="ID_Comentario_Pai" value="{{ com.ID_Comentario }}">
-                  <textarea name="texto" placeholder="Responder..." maxlength="140" required></textarea>
-                  <div><button class="btn" type="submit">Enviar resposta</button></div>
-                </form>
-              {% endif %}
-            </div>
-
           </div>
         </div>
-      {% else %}
-        <div class="no-comments">Ainda não há comentários. Seja o primeiro a comentar!</div>
-      {% endfor %}
+        <p style="margin:0.4rem 0 0 0;">{{ c.texto }}</p>
+      </div>
     </div>
-  </section>
-
+    {% else %}
+    <p>Sem comentários ainda.</p>
+    {% endfor %}
+  </div>
 </div>
 
 <script>
-  const likeBtn = document.getElementById('like-btn');
-  const likeCountEl = document.getElementById('like-count');
+document.addEventListener("DOMContentLoaded", function() {
+  const likeBtn = document.getElementById("likeBtn");
+  if (likeBtn) {
+    likeBtn.addEventListener("click", function(e){
+      e.preventDefault();
+      const imagemId = likeBtn.getAttribute("data-imagem-id");
+      if (!imagemId) return;
 
-  async function toggleLike(imagemId) {
-    try {
-      const res = await fetch('{{ url_for("reacao_toggle") }}', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ imagem_id: imagemId, tipo: 'like' })
+      fetch("{{ url_for('reacao_toggle') }}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({ imagem_id: imagemId, tipo: "like" })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          alert("Erro: " + data.error);
+          return;
+        }
+        const liked = data.status === "liked";
+        const count = data.likes ?? 0;
+        likeBtn.classList.toggle("liked", liked);
+        document.getElementById("likeCount").textContent = count;
+        likeBtn.setAttribute("aria-pressed", liked ? "true" : "false");
+      })
+      .catch(err => {
+        console.error(err);
+        // fallback: submit form (graceful degrade)
+        const f = document.createElement("form");
+        f.method = "POST";
+        f.action = "{{ url_for('reacao') }}";
+        const i1 = document.createElement("input"); i1.type="hidden"; i1.name="imagem_id"; i1.value = imagemId;
+        const i2 = document.createElement("input"); i2.type="hidden"; i2.name="tipo"; i2.value = "like";
+        f.appendChild(i1); f.appendChild(i2); document.body.appendChild(f); f.submit();
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        alert('Erro ao processar like: ' + res.status + ' ' + txt);
-        return;
-      }
-      const data = await res.json();
-      if (data.status === 'liked') {
-        likeBtn.classList.add('liked');
-      } else {
-        likeBtn.classList.remove('liked');
-      }
-      likeCountEl.textContent = data.likes;
-    } catch (err) {
-      console.error(err);
-      alert('Falha na rede ao enviar like.');
-    }
+    });
   }
 
-  function toggleReplyForm(commentId) {
-    const el = document.getElementById('reply-form-' + commentId);
-    if (!el) return;
-    el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
-  }
+  // estilos dinâmicos pequenos
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .like-btn { padding:0.35rem 0.6rem; border-radius:0.45rem; border:1px solid var(--border); background:transparent; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem; }
+    .like-btn.liked { background: rgba(255,0,0,0.08); border-color: rgba(255,0,0,0.2); }
+    .like-btn:hover { transform: translateY(-1px); }
+    .icon-btn { background:transparent; border:0; color:var(--muted); cursor:pointer; padding:0.2rem 0.4rem; }
+    .avatar-sm { object-fit:cover; }
+    .card { background:var(--card); border-radius:0.6rem; padding:1rem; box-shadow:var(--shadow); }
+    .badge { background:var(--muted-bg); padding:0.2rem 0.45rem; border-radius:0.35rem; font-size:0.85rem; }
+  `;
+  document.head.appendChild(style);
 
-  // optional: make Enter+Ctrl submit for comment textareas
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      const ta = document.querySelector('#form-comentar textarea');
-      if (ta && document.activeElement === ta) {
-        document.getElementById('form-comentar').submit();
-      }
-    }
-  });
+});
 </script>
-
-<style>
-/* styles específicos do template (pouco, assume que style.css já tem regras gerais) */
-.imagem-page { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
-.imagem-card { display:flex; gap:18px; background:var(--card-bg); padding:16px; border-radius:10px; }
-.imagem-media { flex:1 1 60%; display:flex; align-items:center; justify-content:center; }
-.imagem-full { max-width:100%; max-height:70vh; border-radius:6px; object-fit:contain; }
-.imagem-meta { flex:1 1 40%; display:flex; flex-direction:column; gap:12px; }
-.titulo { margin:0; font-size:1.6rem; }
-.autor-info { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-.autor-link { display:flex; gap:12px; text-decoration:none; color:inherit; align-items:center; }
-.autor-avatar { width:56px; height:56px; border-radius:50%; object-fit:cover; }
-.autor-nome { font-weight:600; }
-.upload-data { font-size:0.85rem; color:var(--muted); }
-.acao-area { display:flex; gap:8px; align-items:center; }
-.btn-like { border:0; background:transparent; cursor:pointer; font-size:1rem; display:flex; gap:8px; align-items:center; padding:8px; border-radius:6px; }
-.btn-like.liked { color:var(--accent); background:rgba(255,0,0,0.06); }
-.btn-delete { background:#c0392b; color:#fff; border:0; padding:6px 10px; border-radius:6px; cursor:pointer; }
-.descricao { font-size:0.95rem; color:var(--muted); }
-.comentarios-section { margin-top:26px; }
-.form-comentar textarea, .reply-form-area textarea { width:100%; min-height:70px; padding:10px; border-radius:6px; border:1px solid rgba(0,0,0,0.1); }
-.lista-comentarios { margin-top:12px; display:flex; flex-direction:column; gap:12px; }
-.comentario { display:flex; gap:12px; background:var(--panel-bg); padding:12px; border-radius:8px; }
-.coment-avatar, .reply-avatar { width:44px; height:44px; border-radius:50%; object-fit:cover; }
-.comentario-right { flex:1; }
-.coment-cabecalho { display:flex; gap:8px; align-items:center; }
-.coment-autor { font-weight:600; margin-right:6px; }
-.coment-data { color:var(--muted); font-size:0.85rem; margin-left:auto; }
-.coment-texto { margin-top:6px; white-space:pre-wrap; }
-.replies { margin-top:8px; margin-left:56px; display:flex; flex-direction:column; gap:8px; }
-.reply { display:flex; gap:8px; align-items:flex-start; background:rgba(0,0,0,0.03); padding:8px; border-radius:6px; }
-.reply-body { flex:1; }
-.small { font-size:0.85rem; }
-.btn-link { background:none; border:0; color:var(--accent); cursor:pointer; padding:4px 6px; }
-</style>
 
 {% endblock %}

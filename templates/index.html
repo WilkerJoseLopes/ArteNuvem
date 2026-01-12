@@ -4,6 +4,33 @@
 {% block content %}
 <div class="container">
 
+    {# --- INÍCIO DA ATUALIZAÇÃO (Bloco inserido conforme atualizar.txt) --- #}
+    {# logo do topo do index: título de pesquisa ou header de exposição #}
+    {% if exposicao %}
+      <section class="exposicao-header">
+        <h1>{{ exposicao.nome }}</h1>
+        {% if exposicao.descricao %}
+          <p class="descricao">{{ exposicao.descricao }}</p>
+        {% endif %}
+        <p class="datas">
+          {% if exposicao.mes_inteiro %}
+            Período: {{ exposicao.mes }}
+          {% else %}
+            {% if exposicao.start_date %}{{ exposicao.start_date.strftime('%d %b %Y') }}{% endif %}
+            —
+            {% if exposicao.end_date %}{{ exposicao.end_date.strftime('%d %b %Y') }}{% endif %}
+          {% endif %}
+        </p>
+        <hr>
+      </section>
+    {% elif query_text %}
+      <section class="resultados-header">
+        <h2>Resultados de "{{ query_text }}"</h2>
+        <hr>
+      </section>
+    {% endif %}
+    {# --- FIM DA ATUALIZAÇÃO --- #}
+
     {% if is_search %}
         <section class="section">
             <h2 class="section-title">

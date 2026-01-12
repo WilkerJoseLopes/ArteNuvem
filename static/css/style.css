@@ -509,11 +509,14 @@ a:focus, button:focus, input:focus {
 
 .file-label {
     display: block;
-    padding: 12px;
-    background: #eee;
-    border-radius: 8px;
+    padding: 14px;
+    background: #4f46e5; /* cor principal do site */
+    color: #fff;
+    border-radius: 10px;
     cursor: pointer;
     text-align: center;
+    font-weight: 600;
+    transition: background 0.2s ease;
 }
 
 .file-label input {
@@ -558,4 +561,5 @@ a:focus, button:focus, input:focus {
 .btn-primary:hover {
     background: #4338ca;
 }
+
 

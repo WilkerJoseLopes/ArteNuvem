@@ -239,20 +239,23 @@ def ensure_tables():
             db.session.commit()
         app.config["TABLES_INITIALIZED"] = True
 
+
 @app.route("/")
 def index():
     q = request.args.get("q", "", type=str).strip()
     categoria_id = request.args.get("categoria", type=int)
 
-    # Recomendações: 10 imagens aleatórias
-    recomendacoes = (
-        Imagem.query
-        .order_by(func.random())
-        .limit(12)
-        .all()
-    )
+    is_search = bool(q or categoria_id)
 
-    # Catálogo (todas as imagens com filtros)
+    recomendacoes = []
+    if not is_search:
+        recomendacoes = (
+            Imagem.query
+            .order_by(func.random())
+            .limit(10)
+            .all()
+        )
+
     query = Imagem.query
 
     if categoria_id:
@@ -276,7 +279,9 @@ def index():
         categorias=categorias,
         query_text=q,
         selected_categoria=categoria_id,
+        is_search=is_search
     )
+
 
 
 @app.route("/imagem/<int:imagem_id>")
@@ -988,6 +993,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

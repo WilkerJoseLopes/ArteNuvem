@@ -244,14 +244,20 @@ def index():
     q = request.args.get("q", "", type=str).strip()
     categoria_id = request.args.get("categoria", type=int)
 
-    fotos_cat = Categoria.query.filter_by(nome="Fotos").first()
-    fotos = []
-    if fotos_cat:
-        fotos = Imagem.query.filter_by(id_categoria=fotos_cat.id).order_by(Imagem.data_upload.desc()).all()
+    # Recomendações: 10 imagens aleatórias
+    recomendacoes = (
+        Imagem.query
+        .order_by(func.random())
+        .limit(12)
+        .all()
+    )
 
+    # Catálogo (todas as imagens com filtros)
     query = Imagem.query
+
     if categoria_id:
         query = query.filter_by(id_categoria=categoria_id)
+
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -265,12 +271,13 @@ def index():
 
     return render_template(
         "index.html",
-        fotos=fotos,
+        recomendacoes=recomendacoes,
         imagens=imagens,
         categorias=categorias,
         query_text=q,
         selected_categoria=categoria_id,
     )
+
 
 @app.route("/imagem/<int:imagem_id>")
 def imagem_detalhe(imagem_id: int):
@@ -981,6 +988,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

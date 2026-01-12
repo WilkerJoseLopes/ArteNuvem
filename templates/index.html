@@ -1,60 +1,89 @@
 {% extends "base.html" %}
+
+{% block title %}ArteNuvem{% endblock %}
+
 {% block content %}
-<h1>Início</h1>
 
-<section class="section-fotos">
-    <h2>Fotos</h2>
-    <div class="grid">
-        {% for img in fotos %}
-        <div class="card">
-            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
-            </a>
-            <div class="card-body">
-                <h3>{{ img.titulo }}</h3>
-                <p>ID: {{ img.id }}</p>
-                <p>Autor ID: {{ img.id_utilizador }}</p>
-                {% if img.categoria_texto %}
-                    <span class="badge">{{ img.categoria_texto }}</span>
-                {% endif %}
-                {% if current_user and (current_user.id == img.id_utilizador or current_user.email == ADMIN_EMAIL) %}
-                <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
-                    <button type="submit">Apagar</button>
-                </form>
-                {% endif %}
-            </div>
-        </div>
-        {% else %}
-        <p>Sem fotos ainda.</p>
-        {% endfor %}
-    </div>
-</section>
+<div class="container">
 
-<section class="section-others">
-    <h2>Todas as imagens</h2>
-    <div class="grid">
-        {% for img in imagens %}
-        <div class="card">
-            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
-            </a>
-            <div class="card-body">
-                <h3>{{ img.titulo }}</h3>
-                <p>ID: {{ img.id }}</p>
-                <p>Autor ID: {{ img.id_utilizador }}</p>
-                {% if img.categoria_texto %}
-                    <span class="badge">{{ img.categoria_texto }}</span>
-                {% endif %}
-                {% if current_user and (current_user.id == img.id_utilizador or current_user.email == ADMIN_EMAIL) %}
-                <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
-                    <button type="submit">Apagar</button>
-                </form>
-                {% endif %}
-            </div>
+    <!-- Pesquisa + Filtros -->
+    <form method="get" action="/" class="search-bar">
+        <input
+            type="text"
+            name="q"
+            placeholder="Pesquisar por título ou tags..."
+            value="{{ query_text or '' }}"
+        >
+
+        <select name="categoria">
+            <option value="">Todas as categorias</option>
+            {% for cat in categorias %}
+                <option value="{{ cat.id }}"
+                    {% if selected_categoria == cat.id %}selected{% endif %}
+                >
+                    {{ cat.nome }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Pesquisar</button>
+    </form>
+
+    <!-- Recomendações -->
+    <section class="section">
+        <h2>Recomendações</h2>
+
+        <div class="grid">
+            {% for img in recomendacoes %}
+                <div class="card">
+                    <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+                        <img
+                            src="{{ img.caminho_armazenamento }}"
+                            alt="{{ img.titulo }}"
+                            loading="lazy"
+                        >
+                    </a>
+                    <div class="card-body">
+                        <h3>{{ img.titulo }}</h3>
+                        {% if img.categoria_texto %}
+                            <span class="badge">{{ img.categoria_texto }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <p>Sem recomendações disponíveis.</p>
+            {% endfor %}
         </div>
-        {% else %}
-        <p>Sem imagens para mostrar.</p>
-        {% endfor %}
-    </div>
-</section>
+    </section>
+
+    <!-- Catálogo -->
+    <section class="section">
+        <h2>Catálogo</h2>
+
+        <div class="grid">
+            {% for img in imagens %}
+                <div class="card">
+                    <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+                        <img
+                            src="{{ img.caminho_armazenamento }}"
+                            alt="{{ img.titulo }}"
+                            loading="lazy"
+                        >
+                    </a>
+                    <div class="card-body">
+                        <h3>{{ img.titulo }}</h3>
+
+                        {% if img.categoria_texto %}
+                            <span class="badge">{{ img.categoria_texto }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <p>Nenhuma imagem encontrada.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+</div>
+
 {% endblock %}

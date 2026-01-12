@@ -244,23 +244,41 @@ def ensure_tables():
 def index():
     q = request.args.get("q", "", type=str).strip()
     categoria_id = request.args.get("categoria", type=int)
+    exposicao_id = request.args.get("exposicao", type=int)
 
-    is_search = bool(q or categoria_id)
+    # Recomendações (antigo "Fotos") -> 10 aleatórias (só quando não há pesquisa nem exposição)
+    fotos = []
+    if not q and not exposicao_id:
+        fotos = Imagem.query.order_by(db.func.random()).limit(10).all()
 
-    recomendacoes = []
-    if not is_search:
-        recomendacoes = (
-            Imagem.query
-            .order_by(func.random())
-            .limit(10)
-            .all()
-        )
-
+    # Base da query
     query = Imagem.query
 
-    if categoria_id:
+    # Caso venham params de exposição -> filtrar por datas / categoria / tags conforme exposicao
+    exposicao_obj = None
+    if exposicao_id:
+        exposicao_obj = Exposicao.query.get(exposicao_id)
+        if exposicao_obj:
+            if exposicao_obj.start_date:
+                query = query.filter(Imagem.data_upload >= exposicao_obj.start_date)
+            if exposicao_obj.end_date:
+                # garantir inclusão do dia final
+                query = query.filter(Imagem.data_upload <= datetime.combine(exposicao_obj.end_date, datetime.max.time()))
+            if exposicao_obj.categoria_id:
+                query = query.filter(Imagem.id_categoria == exposicao_obj.categoria_id)
+            if exposicao_obj.usar_tags and exposicao_obj.tags_filtro:
+                tags = [t.strip() for t in (exposicao_obj.tags_filtro or "").split(",") if t.strip()]
+                if tags:
+                    cond = False
+                    for t in tags:
+                        cond = cond | (Imagem.tags.ilike(f"%{t}%"))
+                    query = query.filter(cond)
+
+    # filtro por categoria normal (se não estivermos a ver exposição)
+    if categoria_id and not exposicao_id:
         query = query.filter_by(id_categoria=categoria_id)
 
+    # pesquisa (título, categoria, tags)
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -274,12 +292,12 @@ def index():
 
     return render_template(
         "index.html",
-        recomendacoes=recomendacoes,
+        fotos=fotos,
         imagens=imagens,
         categorias=categorias,
         query_text=q,
         selected_categoria=categoria_id,
-        is_search=is_search
+        exposicao=exposicao_obj
     )
 
 
@@ -608,6 +626,13 @@ def exposicao():
     else:
         exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
         return render_template("exposição.html", exposicoes=exposicoes)
+
+@app.route("/exposicao")
+def exposicao_redirect():
+    exposicao_id = request.args.get("exposicao_id", type=int)
+    if exposicao_id:
+        return redirect(url_for("index", exposicao=exposicao_id))
+    return redirect(url_for("index"))
 
 
 @app.route("/admin", methods=["GET", "POST"])
@@ -993,6 +1018,7 @@ def editar_perfil():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

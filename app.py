@@ -290,15 +290,19 @@ def index():
     imagens = query.order_by(Imagem.data_upload.desc()).all()
     categorias = Categoria.query.all()
 
+    is_search = bool(q)  # true apenas se houver texto de pesquisa
+
     return render_template(
         "index.html",
-        fotos=fotos,
+        recomendacoes=fotos,      # o template espera este nome
         imagens=imagens,
         categorias=categorias,
         query_text=q,
         selected_categoria=categoria_id,
-        exposicao=exposicao_obj
+        exposicao=exposicao_obj,
+        is_search=is_search
     )
+
 
 
 
@@ -1044,6 +1048,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

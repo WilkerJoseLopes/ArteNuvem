@@ -1016,8 +1016,42 @@ def editar_perfil():
         return redirect(url_for("perfil", imagem_id=user.id))
     return render_template("editar_perfil.html", categorias=Categoria.query.all(), query_text="", selected_categoria=None)
 
+@app.route("/_fix_exposicoes_once")
+def fix_exposicoes_once():
+    from datetime import date
+    import calendar
+
+    exposicoes = Exposicao.query.filter(
+        (Exposicao.start_date == None) | (Exposicao.end_date == None)
+    ).all()
+
+    total = 0
+
+    for e in exposicoes:
+        if e.mes and "/" in e.mes:
+            try:
+                m, y = map(int, e.mes.split("/"))
+                first = date(y, m, 1)
+                last_day = calendar.monthrange(y, m)[1]
+                last = date(y, m, last_day)
+
+                if not e.start_date:
+                    e.start_date = first
+                if not e.end_date:
+                    e.end_date = last
+
+                db.session.add(e)
+                total += 1
+            except Exception:
+                pass
+
+    db.session.commit()
+    return f"Migração concluída. Exposições corrigidas: {total}"
+
+
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

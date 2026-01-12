@@ -1,15 +1,31 @@
 {% extends "base.html" %}
+{% block title %}Publicar imagem{% endblock %}
+
 {% block content %}
-<h1>Publicar imagem</h1>
-<form method="post" enctype="multipart/form-data" class="form">
-    <div class="form-row">
-        <div>
-            <label>Ficheiro (JPG/PNG)</label>
-            <input type="file" name="ficheiro" required>
+
+<div class="container upload-container">
+
+    <h1>Publicar imagem</h1>
+
+    <form method="post" enctype="multipart/form-data" class="upload-form">
+
+        <!-- Preview -->
+        <div class="preview-box">
+            <img id="preview-img" src="" alt="Preview da imagem" style="display:none;">
+            <span id="preview-placeholder">Pré-visualização da imagem</span>
         </div>
-        <div>
+
+        <!-- Ficheiro -->
+        <label class="file-label">
+            Selecionar imagem (JPG / PNG)
+            <input type="file" name="ficheiro" id="file-input" accept="image/png, image/jpeg" required>
+        </label>
+
+        <!-- Dados -->
+        <div class="form-group">
             <label>Título</label>
-            <input type="text" name="titulo" required>
+            <input type="text" name="titulo" placeholder="Título da imagem" required>
+
             <label>Categoria</label>
             <select name="categoria">
                 <option value="">Sem filtro</option>
@@ -17,20 +33,47 @@
                     <option value="{{ c.id }}">{{ c.nome }}</option>
                 {% endfor %}
             </select>
-            <label>Tags (separadas por vírgula)</label>
+
+            <label>Tags</label>
             <input type="text" name="tags" placeholder="ex: natureza, noite, macro">
         </div>
-    </div>
-    <button type="submit">Publicar</button>
-    <hr>
-    <label>Participar em exposições (opcional)</label>
-    <div>
-      {% for e in exposicoes %}
-        <label style="display:block;">
-          <input type="checkbox" name="exposicoes" value="{{ e.id }}"> {{ e.nome }} — {{ e.start_date or e.mes }} {% if e.categoria_id %}(Cat: {{ e.categoria_id }}){% endif %}
-        </label>
-      {% endfor %}
-    </div>
 
-</form>
+        <hr>
+
+        <!-- Exposições -->
+        <label class="section-label">Participar em exposições (opcional)</label>
+        <div class="exposicoes-box">
+            {% for e in exposicoes %}
+                <label class="checkbox-row">
+                    <input type="checkbox" name="exposicoes" value="{{ e.id }}">
+                    {{ e.nome }}
+                </label>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn-primary">Publicar</button>
+
+    </form>
+</div>
+
+<!-- Preview Script -->
+<script>
+const input = document.getElementById("file-input");
+const previewImg = document.getElementById("preview-img");
+const placeholder = document.getElementById("preview-placeholder");
+
+input.addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        previewImg.src = e.target.result;
+        previewImg.style.display = "block";
+        placeholder.style.display = "none";
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+
 {% endblock %}

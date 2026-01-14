@@ -112,64 +112,65 @@ def upload_imagem_supabase(file):
 
 
 def ensure_google_columns():
-    with app.app_context():
-        inspector = inspect(db.engine)
-        cols = {}
-        try:
-            cols['imagem'] = [c['name'] for c in inspector.get_columns('imagem')]
-        except Exception:
-            cols['imagem'] = []
-        try:
-            cols['comentario'] = [c['name'] for c in inspector.get_columns('comentario')]
-        except Exception:
-            cols['comentario'] = []
-        try:
-            cols['utilizador'] = [c['name'] for c in inspector.get_columns('utilizador')]
-        except Exception:
-            cols['utilizador'] = []
-        try:
-            cols['exposicao'] = [c['name'] for c in inspector.get_columns('exposicao')]
-        except Exception:
-            cols['exposicao'] = []
+    inspector = inspect(db.engine)
+    # se a tabela 'utilizador' nem sequer existe ainda, nada a fazer
+    if not inspector.has_table("utilizador"):
+        app.logger.info("ensure_google_columns: tabela 'utilizador' não existe ainda — skipping.")
+        return
 
+    cols = {}
+    try:
+        cols['imagem'] = [c['name'] for c in inspector.get_columns('imagem')]
+    except Exception:
+        cols['imagem'] = []
+    try:
+        cols['comentario'] = [c['name'] for c in inspector.get_columns('comentario')]
+    except Exception:
+        cols['comentario'] = []
+    try:
+        cols['utilizador'] = [c['name'] for c in inspector.get_columns('utilizador')]
+    except Exception:
+        cols['utilizador'] = []
+    try:
+        cols['exposicao'] = [c['name'] for c in inspector.get_columns('exposicao')]
+    except Exception:
+        cols['exposicao'] = []
+
+    with db.engine.begin() as conn:
+        if "Google_ID" not in cols.get('utilizador', []):
+            conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Google_ID" VARCHAR(200);'))
+        if "Foto_URL" not in cols.get('utilizador', []):
+            conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Foto_URL" VARCHAR(300);'))
+        if "Tipo_Utilizador" not in cols.get('utilizador', []):
+            conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Tipo_Utilizador" VARCHAR(50);'))
+
+        if "ID_Comentario_Pai" not in cols.get('comentario', []):
+            conn.execute(text('ALTER TABLE comentario ADD COLUMN IF NOT EXISTS "ID_Comentario_Pai" INTEGER;'))
+
+        if "Descricao" not in cols.get('exposicao', []):
+            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Descricao" VARCHAR(500);'))
+        if "Start_Date" not in cols.get('exposicao', []):
+            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Start_Date" DATE;'))
+        if "End_Date" not in cols.get('exposicao', []):
+            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "End_Date" DATE;'))
+        if "Mes_Inteiro" not in cols.get('exposicao', []):
+            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Mes_Inteiro" BOOLEAN DEFAULT FALSE;'))
+        if "Categoria_ID" not in cols.get('exposicao', []):
+            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Categoria_ID" INTEGER;'))
+
+        if "Exposicoes_Ids" not in cols.get('imagem', []):
+            conn.execute(text('ALTER TABLE imagem ADD COLUMN IF NOT EXISTS "Exposicoes_Ids" VARCHAR(300);'))
+
+    # tenta criar FK parent se não existir (ignora erro)
+    try:
         with db.engine.begin() as conn:
-            # utilizador
-            if "Google_ID" not in cols.get('utilizador', []):
-                conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Google_ID" VARCHAR(200);'))
-            if "Foto_URL" not in cols.get('utilizador', []):
-                conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Foto_URL" VARCHAR(300);'))
-            if "Tipo_Utilizador" not in cols.get('utilizador', []):
-                conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Tipo_Utilizador" VARCHAR(50);'))
+            conn.execute(text('''
+                ALTER TABLE comentario
+                ADD CONSTRAINT IF NOT EXISTS comentario_parent_fk FOREIGN KEY ("ID_Comentario_Pai") REFERENCES comentario("ID_Comentario");
+            '''))
+    except Exception:
+        pass
 
-            # comentario (parent link)
-            if "ID_Comentario_Pai" not in cols.get('comentario', []):
-                conn.execute(text('ALTER TABLE comentario ADD COLUMN IF NOT EXISTS "ID_Comentario_Pai" INTEGER;'))
-
-            # exposicao
-            if "Descricao" not in cols.get('exposicao', []):
-                conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Descricao" VARCHAR(500);'))
-            if "Start_Date" not in cols.get('exposicao', []):
-                conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Start_Date" DATE;'))
-            if "End_Date" not in cols.get('exposicao', []):
-                conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "End_Date" DATE;'))
-            if "Mes_Inteiro" not in cols.get('exposicao', []):
-                conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Mes_Inteiro" BOOLEAN DEFAULT FALSE;'))
-            if "Categoria_ID" not in cols.get('exposicao', []):
-                conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Categoria_ID" INTEGER;'))
-
-            # imagem
-            if "Exposicoes_Ids" not in cols.get('imagem', []):
-                conn.execute(text('ALTER TABLE imagem ADD COLUMN IF NOT EXISTS "Exposicoes_Ids" VARCHAR(300);'))
-
-        # tenta criar FK (ignora se já existir)
-        try:
-            with db.engine.begin() as conn:
-                conn.execute(text('''
-                    ALTER TABLE comentario
-                    ADD CONSTRAINT comentario_parent_fk FOREIGN KEY ("ID_Comentario_Pai") REFERENCES comentario("ID_Comentario");
-                '''))
-        except Exception:
-            pass
 
 # chama logo no startup
 with app.app_context():
@@ -1048,6 +1049,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

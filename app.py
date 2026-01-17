@@ -146,7 +146,11 @@ def ensure_google_columns():
 
         if "ID_Comentario_Pai" not in cols.get('comentario', []):
             conn.execute(text('ALTER TABLE comentario ADD COLUMN IF NOT EXISTS "ID_Comentario_Pai" INTEGER;'))
-
+        if "Mes" in cols.get('exposicao', []):
+            try:
+                conn.execute(text('ALTER TABLE exposicao ALTER COLUMN "Mes" DROP NOT NULL;'))
+            except Exception:
+                pass
         if "Descricao" not in cols.get('exposicao', []):
             conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Descricao" VARCHAR(500);'))
         if "Start_Date" not in cols.get('exposicao', []):
@@ -1076,6 +1080,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

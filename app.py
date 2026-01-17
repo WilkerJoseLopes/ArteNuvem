@@ -376,6 +376,7 @@ def imagem_detalhe(imagem_id: int):
 @login_required
 def publicar():
     user = current_user()
+
     if request.method == "POST":
         ficheiro = request.files.get("ficheiro")
         titulo = request.form.get("titulo")
@@ -395,8 +396,8 @@ def publicar():
         filename = secure_filename(ficheiro.filename)
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         filename = f"{timestamp}_{filename}"
-        caminho_url, object_key = upload_imagem_supabase(ficheiro)
 
+        caminho_url, object_key = upload_imagem_supabase(ficheiro)
 
         categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
 
@@ -407,21 +408,51 @@ def publicar():
             id_utilizador=user.id,
             id_categoria=categoria_id if categoria_id else None,
         )
+
         if tags:
             img.tags = tags
-            
-        selected = request.form.getlist("exposicoes")  # lista de ids como strings
+
+        selected = request.form.getlist("exposicoes")
         if selected:
             img.exposicoes_ids = ",".join([str(int(x)) for x in selected if x])
-
 
         db.session.add(img)
         db.session.commit()
         flash("Publicado com sucesso!", "success")
         return redirect(url_for("index"))
 
+    # ---------- GET ----------
     categorias = Categoria.query.all()
-    return render_template("upload.html", categorias=categorias, query_text="", selected_categoria=None)
+
+    hoje = date.today()
+    exposicoes_all = Exposicao.query.filter_by(ativo=True).all()
+    exposicoes_disponiveis = []
+
+    for e in exposicoes_all:
+        valido = False
+
+        if e.mes_inteiro and e.mes:
+            try:
+                m, y = map(int, e.mes.split("/"))
+                if m == hoje.month and y == hoje.year:
+                    valido = True
+            except Exception:
+                valido = False
+        else:
+            if e.start_date and e.end_date and e.start_date <= hoje <= e.end_date:
+                valido = True
+
+        if valido:
+            exposicoes_disponiveis.append(e)
+
+    return render_template(
+        "upload.html",
+        categorias=categorias,
+        exposicoes=exposicoes_disponiveis,
+        query_text="",
+        selected_categoria=None,
+    )
+
 
 @app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
 @login_required
@@ -1045,6 +1076,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

@@ -13,7 +13,20 @@
         {% if exposicao.mes_inteiro %}
             <span>Período: mês inteiro ({{ exposicao.mes }})</span>
         {% else %}
-            <span>Período: {{ exposicao.start_date }} → {{ exposicao.end_date }}</span>
+            <span>
+                Período:
+                {% if exposicao.start_date %}
+                    {{ exposicao.start_date.strftime("%d/%m/%Y") }}
+                {% else %}
+                    (data inicial indefinida)
+                {% endif %}
+                →
+                {% if exposicao.end_date %}
+                    {{ exposicao.end_date.strftime("%d/%m/%Y") }}
+                {% else %}
+                    (data final indefinida)
+                {% endif %}
+            </span>
         {% endif %}
     </div>
 
@@ -40,7 +53,7 @@
     {% endif %}
 
     <div class="exposicao-acoes">
-        <a class="btn" href="{{ url_for('index', exposicao_id=exposicao.id) }}">
+        <a class="btn" href="{{ url_for('index', exposicao=exposicao.id) }}">
             Ver todas as imagens desta exposição
         </a>
     </div>
@@ -66,7 +79,9 @@
                     {% if e.mes_inteiro %}
                         Mês inteiro: {{ e.mes }}
                     {% else %}
-                        {{ e.start_date }} → {{ e.end_date }}
+                        {% if e.start_date %}{{ e.start_date.strftime("%d/%m/%Y") }}{% else %}(?){% endif %}
+                        →
+                        {% if e.end_date %}{{ e.end_date.strftime("%d/%m/%Y") }}{% else %}(?){% endif %}
                     {% endif %}
                 </p>
 

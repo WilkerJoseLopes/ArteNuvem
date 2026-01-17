@@ -83,7 +83,7 @@ class Exposicao(db.Model):
 
     id = db.Column("ID_Exposicao", db.Integer, primary_key=True)
     nome = db.Column("Nome", db.String(150), nullable=False)
-    mes = db.Column("Mes", db.String(20), nullable=False)
+    mes = db.Column("Mes", db.String(20), nullable=True)
     imagem_destaque = db.Column("Imagem_Destaque", db.String(500), nullable=True)
     ativo = db.Column("Ativo", db.Boolean, default=True)
     usar_tags = db.Column("Usar_Tags", db.Boolean, default=False)

@@ -654,34 +654,6 @@ def admin():
 
         elif action == "create_exposicao":
             nome = request.form.get("nome")
-            mes = request.form.get("mes")
-            if nome and mes:
-                e = Exposicao(nome=nome, mes=mes)
-                db.session.add(e)
-                db.session.commit()
-                flash("Exposição criada.", "success")
-
-        elif action == "update_exposicao":
-            exposicao_id = request.form.get("exposicao_id", type=int)
-            e = Exposicao.query.get(exposicao_id)
-            if e:
-                novo_nome = request.form.get("nome") or e.nome
-                novo_mes = request.form.get("mes") or e.mes
-                e.nome = novo_nome
-                e.mes = novo_mes
-                db.session.commit()
-                flash("Exposição atualizada.", "success")
-
-        elif action == "delete_exposicao":
-            exposicao_id = request.form.get("exposicao_id", type=int)
-            e = Exposicao.query.get(exposicao_id)
-            if e:
-                db.session.delete(e)
-                db.session.commit()
-                flash("Exposição apagada.", "success")
-                
-        elif action == "create_exposicao":
-            nome = request.form.get("nome")
             descricao = request.form.get("descricao", "").strip() or None
             categoria_id = request.form.get("categoria_id", type=int) or None
             tags_filtro = request.form.get("tags_filtro", "").strip() or None
@@ -691,17 +663,20 @@ def admin():
             tipo_periodo = request.form.get("tipo_periodo", "mes_inteiro")
             start = None
             end = None
-            mes_text = request.form.get("mes")
-            ano_text = request.form.get("ano")
+            mes_val = None
+            mes_inteiro_flag = False
 
-            if tipo_periodo == "mes_inteiro" and mes_text and ano_text:
-                y = int(ano_text)
-                m = int(mes_text)
-                start = date(y, m, 1)
-                last_day = calendar.monthrange(y, m)[1]
-                end = date(y, m, last_day)
-                mes_val = f"{m:02d}/{y}"
-                mes_inteiro_flag = True
+            if tipo_periodo == "mes_inteiro":
+                mes_text = request.form.get("mes")
+                ano_text = request.form.get("ano")
+                if mes_text and ano_text:
+                    y = int(ano_text)
+                    m = int(mes_text)
+                    start = date(y, m, 1)
+                    last_day = calendar.monthrange(y, m)[1]
+                    end = date(y, m, last_day)
+                    mes_val = f"{m:02d}/{y}"
+                    mes_inteiro_flag = True
             else:
                 sd = request.form.get("start_date")
                 ed = request.form.get("end_date")
@@ -709,7 +684,7 @@ def admin():
                     start = date.fromisoformat(sd)
                 if ed:
                     end = date.fromisoformat(ed)
-                mes_val = f"{mes_text or ''}/{ano_text or ''}"
+                mes_val = None
                 mes_inteiro_flag = False
 
             if nome:
@@ -730,8 +705,28 @@ def admin():
                 db.session.commit()
                 flash("Exposição criada.", "success")
 
+        elif action == "update_exposicao":
+            exposicao_id = request.form.get("exposicao_id", type=int)
+            e = Exposicao.query.get(exposicao_id)
+            if e:
+                e.nome = request.form.get("nome") or e.nome
+                e.descricao = request.form.get("descricao", "").strip() or e.descricao
+                e.ativo = bool(int(request.form.get("ativo", 1)))
+                e.categoria_id = request.form.get("categoria_id", type=int) or e.categoria_id
+                e.tags_filtro = request.form.get("tags_filtro", "").strip() or e.tags_filtro
+                db.session.commit()
+                flash("Exposição atualizada.", "success")
+
+        elif action == "delete_exposicao":
+            exposicao_id = request.form.get("exposicao_id", type=int)
+            e = Exposicao.query.get(exposicao_id)
+            if e:
+                db.session.delete(e)
+                db.session.commit()
+                flash("Exposição apagada.", "success")
+
     categorias = Categoria.query.all()
-    exposicoes = Exposicao.query.all()
+    exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
     return render_template(
         "admin.html",
         categorias=categorias,
@@ -739,6 +734,7 @@ def admin():
         query_text="",
         selected_categoria=None,
     )
+
 
 
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
@@ -1049,6 +1045,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

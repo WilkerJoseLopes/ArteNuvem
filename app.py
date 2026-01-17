@@ -606,7 +606,6 @@ def exposicao():
         else:
             q = q.filter((cond_inscritas) | cond_intervalo)
 
-        # segurança: extrai apenas os ids (evita subqueries complexas com FROM anon)
         ids = [row.id for row in q.with_entities(Imagem.id).all()]
         top = []
         if ids:
@@ -624,6 +623,7 @@ def exposicao():
     else:
         exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
         return render_template("exposição.html", exposicoes=exposicoes)
+
 
 @app.route("/exposicao")
 def exposicao_redirect():
@@ -1045,6 +1045,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

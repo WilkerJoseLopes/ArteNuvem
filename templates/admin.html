@@ -102,7 +102,11 @@
           {% if e.mes_inteiro %}
             <em>Mês inteiro ({{ e.mes }})</em>
           {% else %}
-            <em>{{ e.start_date }} → {{ e.end_date }}</em>
+            <em>
+              {% if e.start_date %}{{ e.start_date.strftime("%d/%m/%Y") }}{% else %}(?){% endif %}
+              →
+              {% if e.end_date %}{{ e.end_date.strftime("%d/%m/%Y") }}{% else %}(?){% endif %}
+            </em>
           {% endif %}
         </div>
       </div>

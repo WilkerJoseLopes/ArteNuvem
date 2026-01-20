@@ -96,10 +96,11 @@
     <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
     <div style="display:flex; gap:0.6rem; align-items:flex-start;">
       <img src="{{ current_user.foto_url if current_user and current_user.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;border-radius:50%; object-fit:cover;">
-      <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" style="flex:1; padding:0.6rem; border-radius:0.5rem; border:1px solid var(--border);"></textarea>
+      <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" style="flex:1; padding:0.6rem; border-radius:0.5rem; border:1px solid var(--border);" autofocus>{{ pending_text or "" }}</textarea>
     </div>
-    <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+    <div style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
       <button type="submit" class="btn">Comentar</button>
+      <div class="small" style="color:var(--muted);">Máx. 140 caracteres</div>
     </div>
   </form>
   {% else %}
@@ -167,7 +168,6 @@ document.addEventListener("DOMContentLoaded", function() {
       })
       .catch(err => {
         console.error(err);
-        // fallback: submit form (graceful degrade)
         const f = document.createElement("form");
         f.method = "POST";
         f.action = "{{ url_for('reacao') }}";
@@ -178,7 +178,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // estilos dinâmicos pequenos
   const style = document.createElement('style');
   style.innerHTML = `
     .like-btn { padding:0.35rem 0.6rem; border-radius:0.45rem; border:1px solid var(--border); background:transparent; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem; }

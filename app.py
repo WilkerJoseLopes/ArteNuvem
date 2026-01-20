@@ -316,10 +316,8 @@ def index():
 @app.route("/imagem/<int:imagem_id>")
 def imagem_detalhe(imagem_id: int):
     img = Imagem.query.get_or_404(imagem_id)
-
     autor = Utilizador.query.get(img.id_utilizador) if img.id_utilizador else None
 
-    # obter comentários + autor (tuplas Comentario, Utilizador). usa outerjoin para segurança
     comentarios_tuplas = (
         db.session.query(Comentario, Utilizador)
         .outerjoin(Utilizador, Comentario.id_utilizador == Utilizador.id)
@@ -328,16 +326,9 @@ def imagem_detalhe(imagem_id: int):
         .all()
     )
 
-    # total de likes
     likes = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
 
-    # verificar se user atual deu like
-    user = None
-    try:
-        user = current_user()
-    except Exception:
-        user = None
-
+    user = current_user()
     user_liked = False
     if user:
         user_liked = (
@@ -345,14 +336,18 @@ def imagem_detalhe(imagem_id: int):
             is not None
         )
 
+    pending_text = session.pop("pending_comment_text", "") if session.get("pending_comment_text") else ""
+
     return render_template(
         "imagem.html",
         imagem=img,
         autor=autor,
         comentarios=comentarios_tuplas,
         likes=likes,
-        user_liked=user_liked
+        user_liked=user_liked,
+        pending_text=pending_text
     )
+
 
 
     # total likes
@@ -512,15 +507,32 @@ def apagar_imagem(imagem_id: int):
 @login_required
 def comentario():
     user = current_user()
-    texto = request.form.get("texto")
+    texto = (request.form.get("texto") or "").strip()
     imagem_id = request.form.get("imagem_id", type=int)
+
     if not texto or len(texto) > 140:
         flash("Comentário inválido ou demasiado longo (máx. 140).", "error")
+        # guarda o texto para repor no formulário
+        session["pending_comment_text"] = texto
         return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+
+    try:
+        # se a função devolve True => contém conteúdo impróprio
+        bloqueado = moderar_comentario(texto)
+    except Exception as e:
+        app.logger.exception("Erro ao chamar moderador IA: %s", e)
+        bloqueado = False
+
+    if bloqueado:
+        flash("Linguagem imprópria detectada. Edita o comentário.", "error")
+        session["pending_comment_text"] = texto
+        return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+
     c = Comentario(texto=texto, id_imagem=imagem_id, id_utilizador=user.id if user else None)
     db.session.add(c)
     db.session.commit()
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
+
 
 @app.route("/apagar_comentario", methods=["POST"])
 @login_required
@@ -1082,6 +1094,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

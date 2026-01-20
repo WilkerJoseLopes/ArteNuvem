@@ -1,6 +1,11 @@
 from datetime import datetime
 import os
 import threading
+
+from dotenv import load_dotenv
+load_dotenv() 
+from cloudconvert_service import html_para_pdf
+
 from functools import wraps
 from flask import abort
 from flask import (
@@ -1094,6 +1099,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

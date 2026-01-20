@@ -1,9 +1,8 @@
 import os
 import cloudconvert
-import tempfile
 import shutil
+import requests
 
-# lê a chave do .env (já carregado pelo app.py)
 cloudconvert.configure(
     api_key=os.getenv("CLOUDCONVERT_API_KEY"),
     sandbox=False
@@ -11,11 +10,11 @@ cloudconvert.configure(
 
 def html_para_pdf(html_path: str, pdf_path: str):
     """
-    Converte um ficheiro HTML local em PDF usando CloudConvert
+    Converte HTML local em PDF usando CloudConvert
     """
 
     if not os.getenv("CLOUDCONVERT_API_KEY"):
-        raise RuntimeError("CLOUDCONVERT_API_KEY não definida")
+        raise RuntimeError("CLOUDCONVERT_API_KEY não definida no Render")
 
     job = cloudconvert.Job.create(payload={
         "tasks": {
@@ -54,8 +53,7 @@ def html_para_pdf(html_path: str, pdf_path: str):
 
     pdf_url = export_task["result"]["files"][0]["url"]
 
-    # descarregar o PDF
-    import requests
+    # download do PDF para static/pdf
     r = requests.get(pdf_url, stream=True)
     r.raise_for_status()
 

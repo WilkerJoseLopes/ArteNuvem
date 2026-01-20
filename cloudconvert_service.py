@@ -1,35 +1,34 @@
-import cloudconvert
 import os
+import cloudconvert
 import tempfile
+import shutil
 
+# lê a chave do .env (já carregado pelo app.py)
 cloudconvert.configure(
     api_key=os.getenv("CLOUDCONVERT_API_KEY"),
     sandbox=False
 )
 
-def html_to_pdf(html_content: str) -> str:
+def html_para_pdf(html_path: str, pdf_path: str):
     """
-    Converte HTML em PDF usando CloudConvert
-    Retorna a URL do PDF
+    Converte um ficheiro HTML local em PDF usando CloudConvert
     """
 
-    # cria arquivo HTML temporário
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as f:
-        f.write(html_content.encode("utf-8"))
-        html_path = f.name
+    if not os.getenv("CLOUDCONVERT_API_KEY"):
+        raise RuntimeError("CLOUDCONVERT_API_KEY não definida")
 
     job = cloudconvert.Job.create(payload={
         "tasks": {
-            "import-file": {
+            "import-html": {
                 "operation": "import/upload"
             },
             "convert-pdf": {
                 "operation": "convert",
-                "input": "import-file",
+                "input": "import-html",
                 "output_format": "pdf",
                 "engine": "chrome"
             },
-            "export-file": {
+            "export-pdf": {
                 "operation": "export/url",
                 "input": "convert-pdf"
             }
@@ -53,5 +52,13 @@ def html_to_pdf(html_content: str) -> str:
         if t["operation"] == "export/url"
     )
 
-    return export_task["result"]["files"][0]["url"]
+    pdf_url = export_task["result"]["files"][0]["url"]
+
+    # descarregar o PDF
+    import requests
+    r = requests.get(pdf_url, stream=True)
+    r.raise_for_status()
+
+    with open(pdf_path, "wb") as f:
+        shutil.copyfileobj(r.raw, f)
 

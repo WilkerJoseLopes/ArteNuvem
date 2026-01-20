@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ imagem.titulo }}</title>
+    <style>
+        body { font-family: Arial; padding: 40px; }
+        img { max-width: 100%; border-radius: 8px; }
+        h1 { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>{{ imagem.titulo }}</h1>
+    <p>{{ imagem.descricao }}</p>
+    <img src="{{ imagem.url }}" alt="Imagem">
+    <hr>
+    <p>Autor: {{ imagem.usuario.nome }}</p>
+</body>
+</html>

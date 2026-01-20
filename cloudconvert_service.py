@@ -3,6 +3,11 @@ import cloudconvert
 import shutil
 import requests
 
+cloudconvert.Task.upload(
+    task=upload_task,
+    file_name=html_path
+)
+
 print("CLOUDCONVERT:", bool(os.getenv("CLOUDCONVERT_API_KEY")))
 
 

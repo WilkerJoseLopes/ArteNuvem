@@ -1,6 +1,6 @@
 import requests
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = "https://sleekiest-alayah-duddy.ngrok-free.dev"
 MODEL = "mistral"
 
 def moderar_comentario(texto: str) -> bool:

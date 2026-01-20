@@ -1,93 +1,57 @@
-import os
-import requests
 import cloudconvert
-
-# =========================
-# CONFIGURAÇÃO
-# =========================
-
-API_KEY = os.getenv("CLOUDCONVERT_API_KEY")
-
-if not API_KEY:
-    raise RuntimeError(
-        "CLOUDCONVERT_API_KEY não definida nas variáveis de ambiente"
-    )
+import os
+import tempfile
 
 cloudconvert.configure(
-    api_key=API_KEY,
-    sandbox=False  # True só se estiveres no modo sandbox
+    api_key=os.getenv("CLOUDCONVERT_API_KEY"),
+    sandbox=False
 )
 
-# =========================
-# FUNÇÃO PRINCIPAL
-# =========================
-
-def html_para_pdf(html_path: str, pdf_path: str) -> str:
+def html_to_pdf(html_content: str) -> str:
     """
-    Converte um ficheiro HTML local para PDF usando CloudConvert
+    Converte HTML em PDF usando CloudConvert
+    Retorna a URL do PDF
     """
 
-    # 1. Criar Job
+    # cria arquivo HTML temporário
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as f:
+        f.write(html_content.encode("utf-8"))
+        html_path = f.name
+
     job = cloudconvert.Job.create(payload={
         "tasks": {
-            "import_html": {
+            "import-file": {
                 "operation": "import/upload"
             },
-            "convert_pdf": {
+            "convert-pdf": {
                 "operation": "convert",
-                "input": "import_html",
-                "input_format": "html",
+                "input": "import-file",
                 "output_format": "pdf",
-                "engine": "chrome",
-                "print_background": True
+                "engine": "chrome"
             },
-            "export_pdf": {
+            "export-file": {
                 "operation": "export/url",
-                "input": "convert_pdf"
+                "input": "convert-pdf"
             }
         }
     })
 
-    # 2. Obter task de upload
-    import_task = next(
-        task for task in job["tasks"]
-        if task["name"] == "import_html"
+    upload_task = next(
+        t for t in job["tasks"]
+        if t["operation"] == "import/upload"
     )
 
-    # 3. Upload do HTML
-    with open(html_path, "rb") as f:
-        cloudconvert.Task.upload(import_task, f)
+    cloudconvert.Task.upload(
+        task=upload_task,
+        file_name=html_path
+    )
 
-    # 4. Esperar conclusão do Job
     job = cloudconvert.Job.wait(job["id"])
 
-    # 5. Obter URL do PDF
     export_task = next(
-        task for task in job["tasks"]
-        if task["name"] == "export_pdf"
+        t for t in job["tasks"]
+        if t["operation"] == "export/url"
     )
 
-    file_url = export_task["result"]["files"][0]["url"]
+    return export_task["result"]["files"][0]["url"]
 
-    # 6. Download do PDF
-    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
-
-    response = requests.get(file_url)
-    response.raise_for_status()
-
-    with open(pdf_path, "wb") as f:
-        f.write(response.content)
-
-    return pdf_path
-
-
-# =========================
-# TESTE DIRETO
-# =========================
-
-if __name__ == "__main__":
-    html_file = "teste.html"
-    pdf_file = "output/teste.pdf"
-
-    resultado = html_para_pdf(html_file, pdf_file)
-    print(f"✅ PDF gerado com sucesso: {resultado}")

@@ -5,7 +5,7 @@ import shutil
 
 cloudconvert.configure(
     api_key=os.getenv("CLOUDCONVERT_API_KEY"),
-    sandbox=True  # ou False se for live
+    sandbox=False # ou False se for live
 )
 
 def html_para_pdf(html_path: str, pdf_path: str):

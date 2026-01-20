@@ -33,6 +33,8 @@ from supabase import create_client
 import uuid
 import mimetypes
 
+from ai import moderar_comentario
+
 raw_admins = os.getenv("ADMIN_EMAIL", "")
 # permite suportar 1 ou vários emails separados por vírgula
 ADMIN_EMAILS = [e.strip().lower() for e in raw_admins.split(",") if e.strip()]
@@ -1080,6 +1082,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

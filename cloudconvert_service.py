@@ -3,6 +3,9 @@ import cloudconvert
 import shutil
 import requests
 
+print("CLOUDCONVERT:", bool(os.getenv("CLOUDCONVERT_API_KEY")))
+
+
 cloudconvert.configure(
     api_key=os.getenv("CLOUDCONVERT_API_KEY"),
     sandbox=False

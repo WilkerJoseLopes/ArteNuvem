@@ -664,8 +664,6 @@ def reacao_toggle():
     return jsonify({"status": status, "likes": likes})
 
 
-from sqlalchemy import func, desc, case
-
 @app.route("/exposicao")
 def exposicao():
     exposicao_id = request.args.get("exposicao_id", type=int)
@@ -676,14 +674,13 @@ def exposicao():
 
         cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{e.id}%")
 
-        # intervalo temporal
         cond_intervalo = True
         if e.start_date and e.end_date:
             cond_intervalo = (Imagem.data_upload >= datetime.combine(e.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(e.end_date, datetime.max.time()))
 
-        if getattr(e, "usar_categorias", False) and getattr(e, "categoria_id", None):
+        if e.usar_categorias and e.categoria_id:
             q = q.filter((cond_inscritas) | ((Imagem.id_categoria == e.categoria_id) & cond_intervalo))
-        elif getattr(e, "usar_tags", False) and getattr(e, "tags_filtro", None):
+        elif e.usar_tags and e.tags_filtro:
             tags = [t.strip() for t in (e.tags_filtro or "").split(",") if t.strip()]
             tag_cond = False
             for t in tags:
@@ -696,22 +693,19 @@ def exposicao():
         top = []
         if ids:
             top = (
-                db.session.query(
-                    Imagem,
-                    func.coalesce(func.sum(case([(Reacao.tipo == "like", 1)], else_=0)), 0).label("likes")
-                )
-                .outerjoin(Reacao, Reacao.id_imagem == Imagem.id)
+                db.session.query(Imagem, func.count(Voto.id).label("total_votos"))
+                .outerjoin(Voto, Voto.id_imagem == Imagem.id)
                 .filter(Imagem.id.in_(ids))
                 .group_by(Imagem.id)
-                .order_by(desc("likes"))
+                .order_by(desc("total_votos"))
                 .limit(10)
                 .all()
             )
+
         return render_template("exposição.html", exposicao=e, top=top)
     else:
         exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
         return render_template("exposição.html", exposicoes=exposicoes)
-
 
 
 @app.route("/exposicao")
@@ -849,7 +843,8 @@ def admin():
 
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
-    exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
+    exposicoes = Exposicao.query.all()
+    categorias = Categoria.query.all()
     pdf_url = None
     exposicao_selecionada = None
     top = []
@@ -858,54 +853,37 @@ def exportar_exposicao():
         if exposicao_id:
             exposicao_selecionada = Exposicao.query.get(exposicao_id)
             if exposicao_selecionada:
-                # recolher IDs válidos conforme regras da exposição
-                q = Imagem.query
-                cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{exposicao_selecionada.id}%")
-                cond_intervalo = True
-                if exposicao_selecionada.start_date and exposicao_selecionada.end_date:
-                    cond_intervalo = (Imagem.data_upload >= datetime.combine(exposicao_selecionada.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(exposicao_selecionada.end_date, datetime.max.time()))
-
-                if getattr(exposicao_selecionada, "usar_categorias", False) and getattr(exposicao_selecionada, "categoria_id", None):
-                    q = q.filter((cond_inscritas) | ((Imagem.id_categoria == exposicao_selecionada.categoria_id) & cond_intervalo))
-                elif getattr(exposicao_selecionada, "usar_tags", False) and getattr(exposicao_selecionada, "tags_filtro", None):
-                    tags = [t.strip() for t in (exposicao_selecionada.tags_filtro or "").split(",") if t.strip()]
-                    tag_cond = False
-                    for t in tags:
-                        tag_cond = tag_cond | Imagem.tags.ilike(f"%{t}%")
-                    q = q.filter((cond_inscritas) | (tag_cond & cond_intervalo))
-                else:
-                    q = q.filter((cond_inscritas) | cond_intervalo)
-
-                ids = [r.id for r in q.with_entities(Imagem.id).all()]
-                if ids:
-                    top = (
-                        db.session.query(
-                            Imagem,
-                            func.coalesce(func.sum(case([(Reacao.tipo == "like", 1)], else_=0)), 0).label("likes")
-                        )
-                        .outerjoin(Reacao, Reacao.id_imagem == Imagem.id)
-                        .filter(Imagem.id.in_(ids))
-                        .group_by(Imagem.id)
-                        .order_by(desc("likes"))
-                        .limit(10)
-                        .all()
-                    )
-
-                # gerar HTML do catálogo específico
-                html_content = render_template("catalogo_exposicao.html", exposicao=exposicao_selecionada, top=top, now=lambda: datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
-                html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.html")
-                pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.pdf")
+                top = (
+                    db.session.query(Imagem, func.count(Voto.id).label("total_votos"))
+                    .join(Voto, Voto.id_imagem == Imagem.id)
+                    .filter(Voto.id_exposicao == exposicao_id)
+                    .group_by(Imagem.id)
+                    .order_by(desc("total_votos"))
+                    .limit(10)
+                    .all()
+                )
+                from cloudconvert_service import html_para_pdf
+                html_content = render_template(
+                    "catalogo.html",
+                    exposicao=exposicao_selecionada,
+                    top=top
+                )
+                html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_id}.html")
+                pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_id}.pdf")
                 with open(html_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
-                try:
-                    from cloudconvert_service import html_para_pdf
-                    html_para_pdf(html_path, pdf_path)
-                    pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_selecionada.id}.pdf"
-                    flash("Exportado com sucesso.", "success")
-                except Exception as ex:
-                    app.logger.exception("Erro ao gerar PDF: %s", ex)
-                    flash("Falha ao gerar PDF. Verifica logs.", "error")
-    return render_template("exportar_exposicao.html", exposicoes=exposicoes, pdf_url=pdf_url, exposicao=exposicao_selecionada, top=top)
+                html_para_pdf(html_path, pdf_path)
+                pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_id}.pdf"
+    return render_template(
+        "exportar_exposicao.html",
+        exposicoes=exposicoes,
+        pdf_url=pdf_url,
+        exposicao=exposicao_selecionada,
+        top=top,
+        categorias=categorias,
+        query_text="",
+        selected_categoria=None,
+    )
 
 @app.route("/catalogo")
 def gerar_catalogo():
@@ -1026,41 +1004,24 @@ def api_categorias():
 @app.route("/api/exposicoes/<int:exposicao_id>/top", methods=["GET"])
 def api_exposicao_top(exposicao_id):
     exposicao = Exposicao.query.get_or_404(exposicao_id)
-    # calcula ids das imagens da exposição similar ao código anterior
-    q = Imagem.query
-    cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{exposicao.id}%")
-    cond_intervalo = True
-    if exposicao.start_date and exposicao.end_date:
-        cond_intervalo = (Imagem.data_upload >= datetime.combine(exposicao.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(exposicao.end_date, datetime.max.time()))
-    if getattr(exposicao, "usar_categorias", False) and getattr(exposicao, "categoria_id", None):
-        q = q.filter((cond_inscritas) | ((Imagem.id_categoria == exposicao.categoria_id) & cond_intervalo))
-    elif getattr(exposicao, "usar_tags", False) and getattr(exposicao, "tags_filtro", None):
-        tags = [t.strip() for t in (exposicao.tags_filtro or "").split(",") if t.strip()]
-        tag_cond = False
-        for t in tags:
-            tag_cond = tag_cond | Imagem.tags.ilike(f"%{t}%")
-        q = q.filter((cond_inscritas) | (tag_cond & cond_intervalo))
-    else:
-        q = q.filter((cond_inscritas) | cond_intervalo)
-
-    ids = [r.id for r in q.with_entities(Imagem.id).all()]
-    rows = []
-    if ids:
-        rows = (
-            db.session.query(
-                Imagem,
-                func.coalesce(func.sum(case([(Reacao.tipo == "like", 1)], else_=0)), 0).label("likes")
-            )
-            .outerjoin(Reacao, Reacao.id_imagem == Imagem.id)
-            .filter(Imagem.id.in_(ids))
-            .group_by(Imagem.id)
-            .order_by(desc("likes"))
-            .limit(10)
-            .all()
-        )
-    top = [{"id": img.id, "titulo": img.titulo, "caminho_armazenamento": img.caminho_armazenamento, "votos": int(likes)} for img, likes in rows]
-    return jsonify({"exposicao_id": exposicao.id, "exposicao_nome": exposicao.nome, "top": top})
-
+    rows = db.session.query(
+        Imagem,
+        func.count(Voto.id).label("total_votos")
+    ).outerjoin(Voto, Voto.id_imagem == Imagem.id).group_by(Imagem.id).order_by(func.count(Voto.id).desc()).limit(10).all()
+    def to_min(img, votos):
+        return {
+            "id": getattr(img, "id", None),
+            "titulo": getattr(img, "titulo", None),
+            "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+            "categoria_texto": getattr(img, "categoria_texto", None),
+            "votos": int(votos)
+        }
+    top = [to_min(img, votos) for img, votos in rows]
+    return jsonify({
+        "exposicao_id": exposicao.id,
+        "exposicao_nome": getattr(exposicao, "nome", None),
+        "top": top
+    })
 
 @app.route("/login")
 def login():
@@ -1188,36 +1149,4 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

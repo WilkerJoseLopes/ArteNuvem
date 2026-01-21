@@ -987,7 +987,7 @@ def api_imagens():
 @app.route("/api/imagens/<int:imagem_id>", methods=["GET"])
 def api_imagem_detail(imagem_id):
     img = Imagem.query.get_or_404(imagem_id)
-    votos = db.session.query(func.count(Voto.id)).filter(Voto.id_imagem == imagem_id).scalar() or 0
+    votos = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
     num_comentarios = Comentario.query.filter_by(id_imagem=imagem_id).count()
 
     caminho = getattr(img, "caminho_armazenamento", "") or ""
@@ -1011,6 +1011,7 @@ def api_imagem_detail(imagem_id):
     }
 
     return jsonify(data)
+
 
 @app.route("/api/categorias", methods=["GET"])
 def api_categorias():
@@ -1166,5 +1167,6 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 

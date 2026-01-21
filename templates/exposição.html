@@ -1,62 +1,112 @@
 {% extends "base.html" %}
+{% block title %}Exposição{% endblock %}
 {% block content %}
 
 {% if exposicao %}
 <section class="exposicao-detalhe">
-    <h1>{{ exposicao.nome }}</h1>
-
-    {% if exposicao.descricao %}
-        <p class="exposicao-descricao">{{ exposicao.descricao }}</p>
-    {% endif %}
-
-    <div class="exposicao-meta">
-        {% if exposicao.mes_inteiro %}
-            <span>Período: mês inteiro ({{ exposicao.mes }})</span>
-        {% else %}
-            <span>
-                Período:
-                {% if exposicao.start_date %}
-                    {{ exposicao.start_date.strftime("%d/%m/%Y") }}
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+        <div>
+            <h1 style="margin:0;">{{ exposicao.nome }}</h1>
+            {% if exposicao.descricao %}
+                <p style="margin:0.25rem 0 0.6rem 0; color:var(--muted);">{{ exposicao.descricao }}</p>
+            {% endif %}
+            <p style="margin:0; font-size:0.95rem; color:var(--muted);">
+                {% if exposicao.mes_inteiro and exposicao.mes %}
+                    Período: mês inteiro ({{ exposicao.mes }})
                 {% else %}
-                    (data inicial indefinida)
+                    {% if exposicao.start_date %}{{ exposicao.start_date.strftime("%d/%m/%Y") }}{% else %}(data inicial incerta){% endif %}
+                    &nbsp;→&nbsp;
+                    {% if exposicao.end_date %}{{ exposicao.end_date.strftime("%d/%m/%Y") }}{% else %}(data final incerta){% endif %}
                 {% endif %}
-                →
-                {% if exposicao.end_date %}
-                    {{ exposicao.end_date.strftime("%d/%m/%Y") }}
-                {% else %}
-                    (data final indefinida)
-                {% endif %}
-            </span>
-        {% endif %}
+            </p>
+        </div>
+
+        <div style="display:flex; gap:0.6rem; align-items:center;">
+            <form method="post" action="{{ url_for('exportar_exposicao') }}" id="exportForm" style="margin:0;">
+                <input type="hidden" name="exposicao_id" value="{{ exposicao.id }}">
+                <button class="btn" type="submit">Exportar Top 10 (PDF)</button>
+            </form>
+            <a class="btn-link" href="{{ url_for('index', exposicao=exposicao.id) }}">Ver todas (no índice)</a>
+        </div>
     </div>
 
-    <hr>
+    <hr style="margin:0.8rem 0;">
 
-    <h2>Top 10 imagens mais curtidas</h2>
+    <h2 style="margin-top:0.4rem;">Top 10 imagens mais curtidas</h2>
 
     {% if top %}
-    <div class="grid imagens-grid">
-        {% for img, votos in top %}
-        <div class="card imagem-card">
-            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
-            </a>
-            <div class="card-body">
-                <h4>{{ img.titulo }}</h4>
-                <p>{{ votos }} like{{ 's' if votos != 1 }}</p>
+    <div class="grid imagens-grid" style="margin-top:0.6rem;">
+        {% for rank, pair in enumerate(top, start=1) %}
+            {% set img = pair[0] %}
+            {% set likes = pair[1] %}
+            <div class="card imagem-card" style="position:relative;">
+                <div style="position:absolute; left:8px; top:8px; background:rgba(0,0,0,0.6); color:white; padding:0.25rem 0.5rem; border-radius:0.4rem; font-weight:700;">#{{ rank }}</div>
+                <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+                    <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" style="width:100%; height:200px; object-fit:cover; display:block;">
+                </a>
+                <div class="card-body" style="padding:0.6rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h4 style="margin:0 0 0.25rem 0;">{{ img.titulo }}</h4>
+                            <div style="font-size:0.85rem; color:var(--muted);">
+                                {% if img.categoria_texto %}<span class="badge">{{ img.categoria_texto }}</span>{% endif %}
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div id="likes-{{ img.id }}" style="font-weight:700;">{{ likes }}</div>
+                            <button class="btn-like" data-img="{{ img.id }}" data-type="like" title="Curtir / Descurtir" style="margin-top:0.3rem;">
+                                <span class="like-label">{% if current_user and Reacao.query.filter_by(id_imagem=img.id, id_utilizador=current_user.id, tipo='like').first() %}Descurtir{% else %}Curtir{% endif %}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
         {% endfor %}
     </div>
     {% else %}
-        <p>Sem imagens nesta exposição ainda.</p>
+        <p>Sem imagens nesta exposição.</p>
     {% endif %}
 
-    <div class="exposicao-acoes">
-        <a class="btn" href="{{ url_for('index', exposicao=exposicao.id) }}">
-            Ver todas as imagens desta exposição
-        </a>
-    </div>
+    <style>
+    .imagens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:0.6rem; }
+    .imagem-card { border-radius:0.6rem; overflow:hidden; box-shadow:var(--shadow); background:var(--card); }
+    .btn-like { background:var(--primary); color:#fff; border:0; padding:0.35rem 0.6rem; border-radius:0.35rem; cursor:pointer; }
+    .btn-link { color:var(--primary); text-decoration:none; }
+    </style>
+
+    <script>
+    document.querySelectorAll('.btn-like').forEach(btn => {
+        btn.addEventListener('click', async function(e){
+            e.preventDefault();
+            const imgId = this.dataset.img;
+            const tipo = this.dataset.type || 'like';
+            try {
+                const resp = await fetch("{{ url_for('reacao_toggle') }}", {
+                    method: "POST",
+                    headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify({imagem_id: imgId, tipo: tipo})
+                });
+                if (!resp.ok) {
+                    if (resp.status === 401) {
+                        window.location.href = "{{ url_for('login') }}";
+                        return;
+                    }
+                    console.error("Erro reacao", resp.status);
+                    return;
+                }
+                const data = await resp.json();
+                const likesElt = document.getElementById('likes-' + imgId);
+                if (likesElt) likesElt.textContent = data.likes;
+                // toggle label
+                const label = this.querySelector('.like-label');
+                if (data.status === 'liked') label.textContent = 'Descurtir'; else label.textContent = 'Curtir';
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    });
+    </script>
+
 </section>
 
 {% else %}
@@ -67,27 +117,19 @@
     {% if exposicoes %}
     <div class="grid exposicoes-grid">
         {% for e in exposicoes %}
-        <div class="card exposicao-card">
+        <div class="card exposicao-card" style="padding:0.6rem;">
             <div class="card-body">
-                <h3>{{ e.nome }}</h3>
-
-                {% if e.descricao %}
-                    <p>{{ e.descricao }}</p>
-                {% endif %}
-
-                <p class="exposicao-periodo">
-                    {% if e.mes_inteiro %}
+                <h3 style="margin:0 0 0.4rem 0;">{{ e.nome }}</h3>
+                {% if e.descricao %}<p style="margin:0 0 0.6rem 0; color:var(--muted);">{{ e.descricao }}</p>{% endif %}
+                <p style="margin:0 0 0.6rem 0; font-size:0.9rem;">
+                    {% if e.mes_inteiro and e.mes %}
                         Mês inteiro: {{ e.mes }}
                     {% else %}
-                        {% if e.start_date %}{{ e.start_date.strftime("%d/%m/%Y") }}{% else %}(?){% endif %}
-                        →
+                        {% if e.start_date %}{{ e.start_date.strftime("%d/%m/%Y") }}{% else %}(?){% endif %} →
                         {% if e.end_date %}{{ e.end_date.strftime("%d/%m/%Y") }}{% else %}(?){% endif %}
                     {% endif %}
                 </p>
-
-                <a class="btn" href="{{ url_for('exposicao') }}?exposicao_id={{ e.id }}">
-                    Ver exposição
-                </a>
+                <a class="btn" href="{{ url_for('exposicao') }}?exposicao_id={{ e.id }}">Ver exposição</a>
             </div>
         </div>
         {% endfor %}

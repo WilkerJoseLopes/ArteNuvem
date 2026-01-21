@@ -38,8 +38,6 @@ from supabase import create_client
 import uuid
 import mimetypes
 
-from ai import moderar_comentario
-
 from moderacao import moderar_comentario
 
 raw_admins = os.getenv("ADMIN_EMAIL", "")
@@ -1101,6 +1099,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

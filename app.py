@@ -48,6 +48,7 @@ ADMIN_EMAILS = [e.strip().lower() for e in raw_admins.split(",") if e.strip()]
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+app.jinja_env.globals.update(enumerate=enumerate)
 app.config.from_object(Config)
 
 app.config['SESSION_COOKIE_SECURE'] = True
@@ -1167,6 +1168,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

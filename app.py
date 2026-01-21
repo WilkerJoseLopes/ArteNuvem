@@ -699,12 +699,31 @@ def admin():
         action = request.form.get("action")
 
         if action == "create_categoria":
-            nome = request.form.get("nome")
+            nome = (request.form.get("nome") or "").strip()
             if nome:
-                c = Categoria(nome=nome)
-                db.session.add(c)
-                db.session.commit()
-                flash("Categoria criada.", "success")
+                # evita duplicados
+                if not Categoria.query.filter(func.lower(Categoria.nome) == nome.lower()).first():
+                    c = Categoria(nome=nome)
+                    db.session.add(c)
+                    db.session.commit()
+                    flash("Categoria criada.", "success")
+                else:
+                    flash("Já existe uma categoria com esse nome.", "error")
+            else:
+                flash("Nome inválido.", "error")
+
+        elif action == "delete_categoria":
+            categoria_id = request.form.get("categoria_id", type=int)
+            if categoria_id:
+                c = Categoria.query.get(categoria_id)
+                if c:
+                    # opcional: checar imagens relacionadas antes de apagar
+                    Imagem.query.filter_by(id_categoria=c.id).update({"id_categoria": None, "categoria_texto": None})
+                    db.session.delete(c)
+                    db.session.commit()
+                    flash("Categoria apagada.", "success")
+                else:
+                    flash("Categoria não encontrada.", "error")
 
         elif action == "create_exposicao":
             nome = request.form.get("nome")
@@ -758,6 +777,8 @@ def admin():
                 db.session.add(e)
                 db.session.commit()
                 flash("Exposição criada.", "success")
+            else:
+                flash("Nome da exposição obrigatório.", "error")
 
         elif action == "update_exposicao":
             exposicao_id = request.form.get("exposicao_id", type=int)
@@ -779,7 +800,7 @@ def admin():
                 db.session.commit()
                 flash("Exposição apagada.", "success")
 
-    categorias = Categoria.query.all()
+    categorias = Categoria.query.order_by(Categoria.nome).all()
     exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
     return render_template(
         "admin.html",
@@ -1099,6 +1120,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

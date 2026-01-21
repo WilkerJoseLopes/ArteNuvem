@@ -678,9 +678,9 @@ def exposicao():
         if e.start_date and e.end_date:
             cond_intervalo = (Imagem.data_upload >= datetime.combine(e.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(e.end_date, datetime.max.time()))
 
-        if e.usar_categorias and e.categoria_id:
+        if getattr(e, "usar_categorias", False) and getattr(e, "categoria_id", None):
             q = q.filter((cond_inscritas) | ((Imagem.id_categoria == e.categoria_id) & cond_intervalo))
-        elif e.usar_tags and e.tags_filtro:
+        elif getattr(e, "usar_tags", False) and getattr(e, "tags_filtro", None):
             tags = [t.strip() for t in (e.tags_filtro or "").split(",") if t.strip()]
             tag_cond = False
             for t in tags:
@@ -693,11 +693,11 @@ def exposicao():
         top = []
         if ids:
             top = (
-                db.session.query(Imagem, func.count(Voto.id).label("total_votos"))
-                .outerjoin(Voto, Voto.id_imagem == Imagem.id)
+                db.session.query(Imagem, func.count(Reacao.id).label("likes"))
+                .outerjoin(Reacao, (Reacao.id_imagem == Imagem.id) & (Reacao.tipo == "like"))
                 .filter(Imagem.id.in_(ids))
                 .group_by(Imagem.id)
-                .order_by(desc("total_votos"))
+                .order_by(desc("likes"))
                 .limit(10)
                 .all()
             )
@@ -706,6 +706,7 @@ def exposicao():
     else:
         exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
         return render_template("exposição.html", exposicoes=exposicoes)
+
 
 
 @app.route("/exposicao")
@@ -843,7 +844,7 @@ def admin():
 
 @app.route("/exportar_exposicao", methods=["GET", "POST"])
 def exportar_exposicao():
-    exposicoes = Exposicao.query.all()
+    exposicoes = Exposicao.query.order_by(Exposicao.id.desc()).all()
     categorias = Categoria.query.all()
     pdf_url = None
     exposicao_selecionada = None
@@ -853,37 +854,53 @@ def exportar_exposicao():
         if exposicao_id:
             exposicao_selecionada = Exposicao.query.get(exposicao_id)
             if exposicao_selecionada:
-                top = (
-                    db.session.query(Imagem, func.count(Voto.id).label("total_votos"))
-                    .join(Voto, Voto.id_imagem == Imagem.id)
-                    .filter(Voto.id_exposicao == exposicao_id)
-                    .group_by(Imagem.id)
-                    .order_by(desc("total_votos"))
-                    .limit(10)
-                    .all()
-                )
-                from cloudconvert_service import html_para_pdf
-                html_content = render_template(
-                    "catalogo.html",
-                    exposicao=exposicao_selecionada,
-                    top=top
-                )
-                html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_id}.html")
-                pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_id}.pdf")
+                # recolher imagens válidas (mesma regra da exposicao())
+                q = Imagem.query
+                cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{exposicao_selecionada.id}%")
+                cond_intervalo = True
+                if exposicao_selecionada.start_date and exposicao_selecionada.end_date:
+                    cond_intervalo = (Imagem.data_upload >= datetime.combine(exposicao_selecionada.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(exposicao_selecionada.end_date, datetime.max.time()))
+
+                if getattr(exposicao_selecionada, "usar_categorias", False) and getattr(exposicao_selecionada, "categoria_id", None):
+                    q = q.filter((cond_inscritas) | ((Imagem.id_categoria == exposicao_selecionada.categoria_id) & cond_intervalo))
+                elif getattr(exposicao_selecionada, "usar_tags", False) and getattr(exposicao_selecionada, "tags_filtro", None):
+                    tags = [t.strip() for t in (exposicao_selecionada.tags_filtro or "").split(",") if t.strip()]
+                    tag_cond = False
+                    for t in tags:
+                        tag_cond = tag_cond | Imagem.tags.ilike(f"%{t}%")
+                    q = q.filter((cond_inscritas) | (tag_cond & cond_intervalo))
+                else:
+                    q = q.filter((cond_inscritas) | cond_intervalo)
+
+                ids = [r.id for r in q.with_entities(Imagem.id).all()]
+                if ids:
+                    top = (
+                        db.session.query(Imagem, func.count(Reacao.id).label("likes"))
+                        .outerjoin(Reacao, (Reacao.id_imagem == Imagem.id) & (Reacao.tipo == "like"))
+                        .filter(Imagem.id.in_(ids))
+                        .group_by(Imagem.id)
+                        .order_by(desc("likes"))
+                        .limit(10)
+                        .all()
+                    )
+
+                # render HTML do catálogo e converter em PDF
+                html_content = render_template("catalogo_exposicao.html", exposicao=exposicao_selecionada, top=top, now=lambda: datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
+                html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.html")
+                pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.pdf")
                 with open(html_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
-                html_para_pdf(html_path, pdf_path)
-                pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_id}.pdf"
-    return render_template(
-        "exportar_exposicao.html",
-        exposicoes=exposicoes,
-        pdf_url=pdf_url,
-        exposicao=exposicao_selecionada,
-        top=top,
-        categorias=categorias,
-        query_text="",
-        selected_categoria=None,
-    )
+                try:
+                    from cloudconvert_service import html_para_pdf
+                    html_para_pdf(html_path, pdf_path)
+                    pdf_url = f"/static/pdf/catalogo_exposicao_{exposicao_selecionada.id}.pdf"
+                    flash("PDF gerado com sucesso.", "success")
+                    return redirect(pdf_url)
+                except Exception as ex:
+                    app.logger.exception("Erro ao gerar PDF: %s", ex)
+                    flash("Falha ao gerar PDF. Vê os logs.", "error")
+    return render_template("exportar_exposicao.html", exposicoes=exposicoes, pdf_url=pdf_url, exposicao=exposicao_selecionada, top=top, categorias=categorias, query_text="", selected_categoria=None)
+
 
 @app.route("/catalogo")
 def gerar_catalogo():
@@ -1149,4 +1166,5 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 

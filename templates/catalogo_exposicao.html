@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Catálogo - {{ exposicao.nome if exposicao else "Catálogo" }}</title>
+<style>
+body { font-family: Arial, Helvetica, sans-serif; color:#222; margin:20px; }
+.header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.header h1 { margin:0; font-size:20px; }
+.meta { color:#666; font-size:13px; }
+.table { width:100%; border-collapse:collapse; margin-top:14px; }
+.table th, .table td { border:1px solid #ddd; padding:8px; vertical-align:middle; }
+.table th { background:#f7f7f7; text-align:left; }
+.img-cell img { max-width:120px; max-height:90px; object-fit:cover; display:block; }
+.position { font-weight:700; font-size:16px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>{{ exposicao.nome }}</h1>
+    {% if exposicao.descricao %}<div class="meta">{{ exposicao.descricao }}</div>{% endif %}
+    <div class="meta">
+      {% if exposicao.start_date %}{{ exposicao.start_date.strftime("%d/%m/%Y") }}{% endif %}
+      {% if exposicao.end_date %} — {{ exposicao.end_date.strftime("%d/%m/%Y") }}{% endif %}
+    </div>
+  </div>
+  <div style="text-align:right;">
+    <div style="font-size:12px;color:#444;">Exportado em: {{ now() }}</div>
+  </div>
+</div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Imagem</th>
+      <th>Título</th>
+      <th>Categoria</th>
+      <th>Likes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rank, pair in enumerate(top, start=1) %}
+      {% set img = pair[0] %}
+      {% set likes = pair[1] %}
+    <tr>
+      <td class="position">{{ rank }}</td>
+      <td class="img-cell"><img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}"></td>
+      <td>{{ img.titulo or '' }}</td>
+      <td>{{ img.categoria_texto or '' }}</td>
+      <td style="text-align:right;">{{ likes }}</td>
+    </tr>
+    {% endfor %}
+    {% if not top %}
+      <tr><td colspan="5" style="text-align:center; color:#666;">Sem imagens para esta exposição.</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+
+</body>
+</html>

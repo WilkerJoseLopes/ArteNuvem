@@ -257,63 +257,92 @@ def index():
     q = request.args.get("q", "", type=str).strip()
     categoria_id = request.args.get("categoria", type=int)
     exposicao_id = request.args.get("exposicao", type=int)
+    ordenar = request.args.get("ordenar", "mais_recentes", type=str)
 
-    # Recomendações (antigo "Fotos") -> 10 aleatórias (só quando não há pesquisa nem exposição)
-    fotos = []
-    if not q and not exposicao_id:
-        fotos = Imagem.query.order_by(db.func.random()).limit(10).all()
+    categorias = Categoria.query.order_by(Categoria.nome).all()
 
-    # Base da query
-    query = Imagem.query
+    # Recomendações aleatórias (só mostrar quando não há pesquisa nem categoria nem exposição)
+    recomendacoes = []
+    if not q and not categoria_id and not exposicao_id:
+        recomendacoes = Imagem.query.order_by(db.func.random()).limit(12).all()
 
-    # Caso venham params de exposição -> filtrar por datas / categoria / tags conforme exposicao
+    # Base da query (aplica filtros depois)
+    base_q = Imagem.query
+
     exposicao_obj = None
     if exposicao_id:
         exposicao_obj = Exposicao.query.get(exposicao_id)
         if exposicao_obj:
             if exposicao_obj.start_date:
-                query = query.filter(Imagem.data_upload >= exposicao_obj.start_date)
+                base_q = base_q.filter(Imagem.data_upload >= datetime.combine(exposicao_obj.start_date, datetime.min.time()))
             if exposicao_obj.end_date:
-                # garantir inclusão do dia final
-                query = query.filter(Imagem.data_upload <= datetime.combine(exposicao_obj.end_date, datetime.max.time()))
-            if exposicao_obj.categoria_id:
-                query = query.filter(Imagem.id_categoria == exposicao_obj.categoria_id)
-            if exposicao_obj.usar_tags and exposicao_obj.tags_filtro:
+                base_q = base_q.filter(Imagem.data_upload <= datetime.combine(exposicao_obj.end_date, datetime.max.time()))
+            if getattr(exposicao_obj, "categoria_id", None):
+                base_q = base_q.filter(Imagem.id_categoria == exposicao_obj.categoria_id)
+            if getattr(exposicao_obj, "usar_tags", False) and getattr(exposicao_obj, "tags_filtro", None):
                 tags = [t.strip() for t in (exposicao_obj.tags_filtro or "").split(",") if t.strip()]
                 if tags:
                     cond = False
                     for t in tags:
                         cond = cond | (Imagem.tags.ilike(f"%{t}%"))
-                    query = query.filter(cond)
+                    base_q = base_q.filter(cond)
 
-    # filtro por categoria normal (se não estivermos a ver exposição)
+    # Filtro por categoria normal (se não estivermos a ver exposição)
     if categoria_id and not exposicao_id:
-        query = query.filter_by(id_categoria=categoria_id)
+        base_q = base_q.filter_by(id_categoria=categoria_id)
 
-    # pesquisa (título, categoria, tags)
+    # Pesquisa
     if q:
         like = f"%{q}%"
-        query = query.filter(
+        base_q = base_q.filter(
             (Imagem.titulo.ilike(like)) |
             (Imagem.categoria_texto.ilike(like)) |
             (Imagem.tags.ilike(like))
         )
 
-    imagens = query.order_by(Imagem.data_upload.desc()).all()
-    categorias = Categoria.query.all()
+    # Ordenação
+    imagens = []
+    ordenar = ordenar or "mais_recentes"
+    if ordenar in ("mais_curtidas", "menos_curtidas"):
+        ids = [r.id for r in base_q.with_entities(Imagem.id).all()]
+        if ids:
+            order_dir = desc if ordenar == "mais_curtidas" else func.asc
+            rows = (
+                db.session.query(Imagem, func.count(Reacao.id).label("likes"))
+                .outerjoin(Reacao, (Reacao.id_imagem == Imagem.id) & (Reacao.tipo == "like"))
+                .filter(Imagem.id.in_(ids))
+                .group_by(Imagem.id)
+                .order_by(desc("likes") if ordenar == "mais_curtidas" else func.min("likes"))  # fallback
+                .all()
+            )
+            # rows is list of (Imagem, likes)
+            imagens = [r[0] for r in rows]
+        else:
+            imagens = []
+    else:
+        if ordenar == "mais_antigas":
+            imagens = base_q.order_by(Imagem.data_upload.asc()).all()
+        else:  # mais_recentes (default)
+            imagens = base_q.order_by(Imagem.data_upload.desc()).all()
 
-    is_search = bool(q)  # true apenas se houver texto de pesquisa
+    is_search = bool(q)
+    is_categoria = bool(categoria_id and not exposicao_id)
+    categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
 
     return render_template(
         "index.html",
-        recomendacoes=fotos,      # o template espera este nome
+        recomendacoes=recomendacoes,
         imagens=imagens,
         categorias=categorias,
         query_text=q,
         selected_categoria=categoria_id,
         exposicao=exposicao_obj,
-        is_search=is_search
+        is_search=is_search,
+        is_categoria=is_categoria,
+        categoria_obj=categoria_obj,
+        ordenar=ordenar
     )
+
 
 
 
@@ -1120,6 +1149,7 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

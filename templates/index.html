@@ -4,100 +4,141 @@
 {% block content %}
 <div class="container">
 
-
-    {% if exposicao %}
-      <section class="exposicao-header">
-        <h1>{{ exposicao.nome }}</h1>
-        {% if exposicao.descricao %}
-          <p class="descricao">{{ exposicao.descricao }}</p>
+  {% if exposicao %}
+    <section class="exposicao-header">
+      <h1>{{ exposicao.nome }}</h1>
+      {% if exposicao.descricao %}
+        <p class="descricao">{{ exposicao.descricao }}</p>
+      {% endif %}
+      <p class="datas">
+        {% if exposicao.mes_inteiro and exposicao.mes %}
+          Período: {{ exposicao.mes }}
+        {% else %}
+          {% if exposicao.start_date %}{{ exposicao.start_date.strftime('%d %b %Y') }}{% endif %}
+          —
+          {% if exposicao.end_date %}{{ exposicao.end_date.strftime('%d %b %Y') }}{% endif %}
         {% endif %}
-        <p class="datas">
-          {% if exposicao.mes_inteiro %}
-            Período: {{ exposicao.mes }}
-          {% else %}
-            {% if exposicao.start_date %}{{ exposicao.start_date.strftime('%d %b %Y') }}{% endif %}
-            —
-            {% if exposicao.end_date %}{{ exposicao.end_date.strftime('%d %b %Y') }}{% endif %}
-          {% endif %}
-        </p>
-        <hr>
-      </section>
-    {% elif query_text %}
-      <section class="resultados-header">
-        <h2>Resultados de "{{ query_text }}"</h2>
-        <hr>
-      </section>
-    {% endif %}
-    {# --- FIM DA ATUALIZAÇÃO --- #}
+      </p>
+      <hr>
+    </section>
+  {% elif is_search %}
+    <section class="resultados-header">
+      <h2>Resultados de "{{ query_text }}"</h2>
+      <hr>
+    </section>
+  {% elif is_categoria and categoria_obj %}
+    <section class="resultados-header">
+      <h2>Categoria: {{ categoria_obj.nome }}</h2>
+      <hr>
+    </section>
+  {% endif %}
 
-    {% if is_search %}
-        <section class="section">
-            <h2 class="section-title">
-                Resultados{% if query_text %} de “{{ query_text }}”{% endif %}
-            </h2>
+  {# Barra de ordenação — aparece sempre que existe um conjunto de imagens (pesquisa / categoria / catálogo) #}
+  <div class="actions-row" style="display:flex; justify-content:space-between; align-items:center; margin:0.6rem 0;">
+    <div>
+      {% if imagens %}
+        <form id="sortForm" method="get" style="display:flex; gap:0.5rem; align-items:center;">
+          <input type="hidden" name="q" value="{{ query_text }}">
+          <input type="hidden" name="categoria" value="{{ selected_categoria }}">
+          <input type="hidden" name="exposicao" value="{{ exposicao.id if exposicao }}">
+          <label for="ordenar">Ordenar:</label>
+          <select name="ordenar" id="ordenar" onchange="document.getElementById('sortForm').submit()" style="margin-left:0.4rem;">
+            <option value="mais_recentes" {% if ordenar=='mais_recentes' %}selected{% endif %}>Mais recentes</option>
+            <option value="mais_antigas" {% if ordenar=='mais_antigas' %}selected{% endif %}>Mais antigas</option>
+            <option value="mais_curtidas" {% if ordenar=='mais_curtidas' %}selected{% endif %}>Mais curtidas</option>
+            <option value="menos_curtidas" {% if ordenar=='menos_curtidas' %}selected{% endif %}>Menos curtidas</option>
+          </select>
+        </form>
+      {% endif %}
+    </div>
 
-            <div class="grid">
-                {% for img in imagens %}
-                    <div class="card">
-                        <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-                            <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
-                        </a>
-                        <div class="card-body">
-                            <h3>{{ img.titulo }}</h3>
-                            {% if img.categoria_texto %}
-                                <span class="badge">{{ img.categoria_texto }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% else %}
-                    <p>Nenhum resultado encontrado.</p>
-                {% endfor %}
+    <div>
+      {# Link rápido para ver catálogo completo quando não há pesquisa/categoria/exposição #}
+      {% if not is_search and not is_categoria and not exposicao %}
+        <a href="{{ url_for('gerar_catalogo') }}" class="btn-link">Gerar catálogo (PDF)</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# --- Se pesquisa ou categoria ou exposição: mostrar apenas o resultado filtrado --- #}
+  {% if is_search or is_categoria or exposicao %}
+    <section class="section">
+      <div class="grid">
+        {% for img in imagens %}
+          <div class="card">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+              <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
+            </a>
+            <div class="card-body">
+              <h3>{{ img.titulo }}</h3>
+              {% if img.categoria_texto %}
+                <span class="badge">{{ img.categoria_texto }}</span>
+              {% endif %}
             </div>
-        </section>
+          </div>
+        {% else %}
+          <p>Nenhuma imagem encontrada.</p>
+        {% endfor %}
+      </div>
+    </section>
 
-    {% else %}
+  {% else %}
+    {# --- PÁGINA NORMAL: Recomendações + Catálogo --- #}
 
-        <section class="section">
-            <h2>Recomendações</h2>
-
-            <div class="grid">
-                {% for img in recomendacoes %}
-                    <div class="card">
-                        <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-                            <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
-                        </a>
-                        <div class="card-body">
-                            <h3>{{ img.titulo }}</h3>
-                            {% if img.categoria_texto %}
-                                <span class="badge">{{ img.categoria_texto }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endfor %}
+    <section class="section">
+      <h2>Recomendações</h2>
+      <div class="grid">
+        {% for img in recomendacoes %}
+          <div class="card">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+              <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
+            </a>
+            <div class="card-body">
+              <h3>{{ img.titulo }}</h3>
+              {% if img.categoria_texto %}
+                <span class="badge">{{ img.categoria_texto }}</span>
+              {% endif %}
             </div>
-        </section>
+          </div>
+        {% else %}
+          <p>Sem recomendações.</p>
+        {% endfor %}
+      </div>
+    </section>
 
-        <section class="section">
-            <h2>Catálogo</h2>
-
-            <div class="grid">
-                {% for img in imagens %}
-                    <div class="card">
-                        <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-                            <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
-                        </a>
-                        <div class="card-body">
-                            <h3>{{ img.titulo }}</h3>
-                            {% if img.categoria_texto %}
-                                <span class="badge">{{ img.categoria_texto }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endfor %}
+    <section class="section">
+      <h2>Catálogo</h2>
+      <div class="grid">
+        {% for img in imagens %}
+          <div class="card">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
+              <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
+            </a>
+            <div class="card-body">
+              <h3>{{ img.titulo }}</h3>
+              {% if img.categoria_texto %}
+                <span class="badge">{{ img.categoria_texto }}</span>
+              {% endif %}
             </div>
-        </section>
-
-    {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 
 </div>
+
+<style>
+.container { padding:1rem; max-width:1200px; margin:0 auto; }
+.exposicao-header .descricao { margin:0.4rem 0; color:var(--muted); }
+.section { margin:1rem 0; }
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; }
+.card { background:var(--card); border-radius:0.6rem; overflow:hidden; box-shadow:var(--shadow); }
+.card img { width:100%; height:180px; object-fit:cover; display:block; }
+.card-body { padding:0.6rem; }
+.card-body h3 { margin:0 0 0.4rem 0; font-size:1rem; }
+.badge { background:rgba(0,0,0,0.06); padding:0.15rem 0.4rem; border-radius:0.35rem; font-size:0.8rem; }
+.actions-row .btn-link { text-decoration:none; color:var(--primary); }
+</style>
+
 {% endblock %}

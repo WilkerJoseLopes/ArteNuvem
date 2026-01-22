@@ -1,7 +1,7 @@
 import re
 import unicodedata
 
-# lista simples de palavras proibidas (pt + en). Expande à vontade.
+
 PROIBIDAS = {
     # português (exemplos)
     "caralho","porra","foda","fode","fodasse","p*ta","puta","merda","burro","idiota","otario","otário",
@@ -10,7 +10,6 @@ PROIBIDAS = {
     "fuck","shit","bitch","bastard","asshole","motherfucker"
 }
 
-# normalizar: remove acentos, põe minúsculas e só letras/números/espaços
 def _normaliza(texto: str) -> str:
     texto = texto or ""
     # remove acentos
@@ -23,7 +22,7 @@ def _normaliza(texto: str) -> str:
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto
 
-# detecta obfuscações simples (ex.: f0da -> foda)
+
 def _deobfusca(texto: str) -> str:
     subs = {
         "0":"o", "1":"i", "3":"e", "4":"a", "5":"s", "7":"t", "@":"a", "$":"s"
@@ -53,12 +52,12 @@ def moderar_comentario(texto: str) -> bool:
 
     tokens = txt.split()
 
-    # 1) checa palavras isoladas
+ 
     for t in tokens:
         if t in PROIBIDAS:
             return True
 
-    # 2) checa n-grams (até 4 palavras) para frases como "filho da puta"
+
     for ngram in _gera_ngrams(tokens, max_len=4):
         if ngram in PROIBIDAS:
             return True

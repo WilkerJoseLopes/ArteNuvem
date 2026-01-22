@@ -12,7 +12,6 @@ def _get_database_uri():
             db_url = db_url.replace("postgres://", "postgresql://", 1)
         return db_url
 
-    # fallback para desenvolvimento local
     return "sqlite:///local.db"
 
 
@@ -20,4 +19,5 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///local.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 

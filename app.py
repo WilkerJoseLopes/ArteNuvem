@@ -59,12 +59,10 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 db.init_app(app)
 
-# --- Substituir bloco de criação do cliente Supabase por este ---
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# normalizar URL (remove trailing slash só para garantir)
 if SUPABASE_URL:
     SUPABASE_URL = SUPABASE_URL.rstrip("/")
 
@@ -93,7 +91,7 @@ else:
             supabase_service = None
     else:
         app.logger.warning("SUPABASE_SERVICE_ROLE_KEY não definido. Uploads via server podem falhar.")
-# ----------------------------------------------------------------
+
 @app.errorhandler(500)
 def internal_error(e):
     tb = traceback.format_exc()
@@ -121,7 +119,6 @@ def upload_imagem_supabase(file):
 
 def ensure_google_columns():
     inspector = inspect(db.engine)
-    # se a tabela 'utilizador' nem sequer existe ainda, nada a fazer
     if not inspector.has_table("utilizador"):
         app.logger.info("ensure_google_columns: tabela 'utilizador' não existe ainda — skipping.")
         return
@@ -173,7 +170,7 @@ def ensure_google_columns():
         if "Exposicoes_Ids" not in cols.get('imagem', []):
             conn.execute(text('ALTER TABLE imagem ADD COLUMN IF NOT EXISTS "Exposicoes_Ids" VARCHAR(300);'))
 
-    # tenta criar FK parent se não existir (ignora erro)
+
     try:
         with db.engine.begin() as conn:
             conn.execute(text('''
@@ -184,7 +181,7 @@ def ensure_google_columns():
         pass
 
 
-# chama logo no startup
+
 with app.app_context():
     ensure_google_columns()
 
@@ -262,12 +259,12 @@ def index():
 
     categorias = Categoria.query.order_by(Categoria.nome).all()
 
-    # Recomendações aleatórias (só mostrar quando não há pesquisa nem categoria nem exposição)
+ 
     recomendacoes = []
     if not q and not categoria_id and not exposicao_id:
         recomendacoes = Imagem.query.order_by(db.func.random()).limit(12).all()
 
-    # Base da query (aplica filtros depois)
+    
     base_q = Imagem.query
 
     exposicao_obj = None
@@ -288,11 +285,11 @@ def index():
                         cond = cond | (Imagem.tags.ilike(f"%{t}%"))
                     base_q = base_q.filter(cond)
 
-    # Filtro por categoria normal (se não estivermos a ver exposição)
+    
     if categoria_id and not exposicao_id:
         base_q = base_q.filter_by(id_categoria=categoria_id)
 
-    # Pesquisa
+    
     if q:
         like = f"%{q}%"
         base_q = base_q.filter(
@@ -301,7 +298,7 @@ def index():
             (Imagem.tags.ilike(like))
         )
 
-    # Ordenação
+    
     imagens = []
     ordenar = ordenar or "mais_recentes"
     if ordenar in ("mais_curtidas", "menos_curtidas"):
@@ -316,14 +313,14 @@ def index():
                 .order_by(desc("likes") if ordenar == "mais_curtidas" else func.min("likes"))  # fallback
                 .all()
             )
-            # rows is list of (Imagem, likes)
+            
             imagens = [r[0] for r in rows]
         else:
             imagens = []
     else:
         if ordenar == "mais_antigas":
             imagens = base_q.order_by(Imagem.data_upload.asc()).all()
-        else:  # mais_recentes (default)
+        else:  
             imagens = base_q.order_by(Imagem.data_upload.desc()).all()
 
     is_search = bool(q)
@@ -385,10 +382,10 @@ def imagem_detalhe(imagem_id: int):
 
 
 
-    # total likes
+    
     likes = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
 
-    # se houver um user logado, verifica se ele já deu like (para evitar queries no template)
+    
     user = current_user()
     user_liked = False
     if user:
@@ -457,7 +454,7 @@ def publicar():
         flash("Publicado com sucesso!", "success")
         return redirect(url_for("index"))
 
-    # ---------- GET ----------
+    
     categorias = Categoria.query.all()
 
     hoje = date.today()
@@ -496,18 +493,18 @@ def apagar_imagem(imagem_id: int):
     user = current_user()
     img = Imagem.query.get_or_404(imagem_id)
     user_email = (user.email or "").strip().lower() if user else ""
-    # permite que o dono da imagem ou admin apague
+    
     if not user or not (user.id == img.id_utilizador or (ADMIN_EMAILS and user_email in ADMIN_EMAILS)):
         flash("Não tens permissão para apagar esta imagem.", "error")
         return redirect(url_for("index"))
 
 
-    # Apagar dependências na BD
+    
     Comentario.query.filter_by(id_imagem=imagem_id).delete()
     Reacao.query.filter_by(id_imagem=imagem_id).delete()
     Voto.query.filter_by(id_imagem=imagem_id).delete()
 
-    # Se havia ficheiro local (caso legado), tenta remover
+    
     try:
         caminho_relativo = (img.caminho_armazenamento or "").lstrip("/")
         caminho_ficheiro = os.path.join(app.root_path, caminho_relativo)
@@ -517,14 +514,14 @@ def apagar_imagem(imagem_id: int):
             except Exception as e:
                 app.logger.warning("Falha a remover ficheiro local: %s", e)
     except Exception:
-        # não falha se img.caminho_armazenamento não estiver no formato local
+        
         pass
 
-    # Remove do BD
+    
     db.session.delete(img)
     db.session.commit()
 
-    # tentar apagar do Supabase também (se existir)
+    
     try:
         if img.caminho_armazenamento and supabase_service:
             object_key = img.caminho_armazenamento.rstrip("/").split("/")[-1]
@@ -547,12 +544,11 @@ def comentario():
 
     if not texto or len(texto) > 140:
         flash("Comentário inválido ou demasiado longo (máx. 140).", "error")
-        # guarda o texto para repor no formulário
         session["pending_comment_text"] = texto
         return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
 
     try:
-        # se a função devolve True => contém conteúdo impróprio
+
         bloqueado = moderar_comentario(texto)
     except Exception as e:
         app.logger.exception("Erro ao chamar moderador IA: %s", e)
@@ -593,7 +589,7 @@ def apagar_comentario():
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id or c.id_imagem))
 
 
-# fallback (mantém compatibilidade com forms antigos)
+
 @app.route("/reacao", methods=["POST"])
 @login_required
 def reacao():
@@ -603,7 +599,7 @@ def reacao():
     if not tipo or not imagem_id:
         return redirect(url_for("index"))
 
-    user = current_user()  # <<--- NOTE: chamada da função
+    user = current_user()  
 
     existente = Reacao.query.filter_by(
         tipo=tipo,
@@ -622,11 +618,11 @@ def reacao():
     return redirect(url_for("imagem_detalhe", imagem_id=imagem_id))
 
 
-# AJAX toggle endpoint -> devolve JSON { status: "liked"|"unliked", likes: N }
+
 @app.route("/reacao/toggle", methods=["POST"])
 @login_required
 def reacao_toggle():
-    # aceita form ou json
+    
     if request.is_json:
         data = request.get_json()
         imagem_id = int(data.get("imagem_id", 0))
@@ -732,7 +728,7 @@ def admin():
         if action == "create_categoria":
             nome = (request.form.get("nome") or "").strip()
             if nome:
-                # evita duplicados
+            
                 if not Categoria.query.filter(func.lower(Categoria.nome) == nome.lower()).first():
                     c = Categoria(nome=nome)
                     db.session.add(c)
@@ -748,7 +744,7 @@ def admin():
             if categoria_id:
                 c = Categoria.query.get(categoria_id)
                 if c:
-                    # opcional: checar imagens relacionadas antes de apagar
+                    
                     Imagem.query.filter_by(id_categoria=c.id).update({"id_categoria": None, "categoria_texto": None})
                     db.session.delete(c)
                     db.session.commit()
@@ -855,7 +851,7 @@ def exportar_exposicao():
         if exposicao_id:
             exposicao_selecionada = Exposicao.query.get(exposicao_id)
             if exposicao_selecionada:
-                # recolher imagens válidas (mesma regra da exposicao())
+                
                 q = Imagem.query
                 cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{exposicao_selecionada.id}%")
                 cond_intervalo = True
@@ -885,7 +881,7 @@ def exportar_exposicao():
                         .all()
                     )
 
-                # render HTML do catálogo e converter em PDF
+                
                 html_content = render_template("catalogo_exposicao.html", exposicao=exposicao_selecionada, top=top, now=lambda: datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
                 html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.html")
                 pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.pdf")
@@ -937,7 +933,7 @@ def gerar_certificado(user_id):
         flash("Geração de PDF falhou (CloudConvert). HTML guardado temporariamente.", "error")
     return redirect("/" + pdf_path)
 
-# API endpoints
+
 @app.route("/api/imagens", methods=["GET"])
 def api_imagens():
     q = request.args.get("q", "", type=str).strip()
@@ -1114,7 +1110,7 @@ def editar_perfil():
             flash("O nome não pode ficar vazio.", "error")
             return redirect(url_for("editar_perfil"))
         user.nome = nome
-        # tenta definir ambos os possíveis nomes de coluna/atributo para compatibilidade
+
         try:
             setattr(user, "Descricao", descricao)
         except Exception:
@@ -1168,7 +1164,3 @@ def fix_exposicoes_once():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
-

@@ -42,3 +42,11 @@ Este projeto foi desenvolvido como trabalho prático para a unidade curricular *
 - Programação distribuída
 - APIs REST
 - Segurança e escalabilidade
+
+## 🔑⚠️ Chaves API
+Todas as chaves de API como do google auth, CloudConvert e entre outros, estão guardados no render e são chamados por variaveis que tem as chaves armazenadas, variaveis essas que estão presentes no codigo.
+
+
+## 👤 Colaboradores do Projeto
+- Danilson Gonçalves
+- Wilker Lopes

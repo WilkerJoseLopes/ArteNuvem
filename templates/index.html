@@ -55,7 +55,6 @@
     <div>
       {# Link rápido para ver catálogo completo quando não há pesquisa/categoria/exposição #}
       {% if not is_search and not is_categoria and not exposicao %}
-        <a href="{{ url_for('gerar_catalogo') }}" class="btn-link">Gerar catálogo (PDF)</a>
       {% endif %}
     </div>
   </div>

@@ -1341,7 +1341,7 @@ def ver_base_dados():
         <h2>1. Utilizadores <span class="count">({{ dados.utilizadores|length }})</span></h2>
         <div class="table-responsive">
             <table>
-                <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Google ID</th><th>Foto URL</th></tr></thead>
+                <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Google ID</th></tr></thead>
                 <tbody>
                     {% for u in dados.utilizadores %}
                     <tr>
@@ -1350,7 +1350,6 @@ def ver_base_dados():
                         <td>{{ u.email }}</td>
                         <td>{{ u.tipo }}</td>
                         <td>{{ u.google_id }}</td>
-                        <td class="small-col" title="{{ u.foto_url }}">{{ u.foto_url }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1445,7 +1444,7 @@ def ver_base_dados():
         <h2>6. Comentários <span class="count">({{ dados.comentarios|length }})</span></h2>
         <div class="table-responsive">
             <table>
-                <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Pai ID</th><th>Data</th></tr></thead>
+                <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Data</th></tr></thead>
                 <tbody>
                     {% for c in dados.comentarios %}
                     <tr>
@@ -1493,6 +1492,7 @@ def api_testar():
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

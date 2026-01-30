@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv() 
 from cloudconvert_service import html_para_pdf
 
+from flask import render_template_string
 from functools import wraps
 from flask import abort
 from flask import (
@@ -1169,93 +1170,158 @@ def fix_exposicoes_once():
     db.session.commit()
     return f"Migração concluída. Exposições corrigidas: {total}"
 
+
 @app.route("/admin/ver_base_dados")
 @login_required
 def ver_base_dados():
     user = current_user()
     user_email = (user.email or "").strip().lower() if user else ""
     if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
-        return jsonify({"erro": "Acesso negado. Apenas admin."}), 403
+        return "Acesso negado.", 403
 
-    
     dados = {}
 
-
     try:
-        users = Utilizador.query.all()
-        dados["utilizadores"] = [{
-            "id": u.id,
-            "nome": u.nome,
-            "email": u.email,
-            "tipo": u.tipo_utilizador
-        } for u in users]
-    except Exception as e:
-        dados["utilizadores_erro"] = str(e)
-
-
-    try:
-        cats = Categoria.query.all()
-        dados["categorias"] = [{"id": c.id, "nome": c.nome} for c in cats]
-    except Exception as e:
-        dados["categorias_erro"] = str(e)
-
-    try:
-        expos = Exposicao.query.all()
-        dados["exposicoes"] = [{
-            "id": e.id,
-            "nome": e.nome,
-            "ativo": e.ativo,
-            "start_date": str(e.start_date) if e.start_date else None,
-            "end_date": str(e.end_date) if e.end_date else None
-        } for e in expos]
-    except Exception as e:
-        dados["exposicoes_erro"] = str(e)
-
-
-    try:
-        imgs = Imagem.query.all()
-        imgs_data = []
-        for i in imgs:
+        dados["utilizadores"] = [
+            {"id": u.id, "nome": u.nome, "email": u.email, "tipo": u.tipo_utilizador, "google_id": u.google_id} 
+            for u in Utilizador.query.all()
+        ]
+        dados["categorias"] = [{"id": c.id, "nome": c.nome} for c in Categoria.query.all()]
         
-            expos_associadas = [e.id for e in i.exposicoes] 
-            
-            imgs_data.append({
-                "id": i.id,
-                "titulo": i.titulo,
-                "autor_id": i.id_utilizador,
-                "categoria_id": i.id_categoria,
-                "exposicoes_ids_associados": expos_associadas
+        expos = []
+        for e in Exposicao.query.all():
+            expos.append({
+                "id": e.id, "nome": e.nome, "ativo": e.ativo, 
+                "datas": f"{e.start_date} a {e.end_date}" if e.start_date else e.mes
             })
-        dados["imagens"] = imgs_data
-    except Exception as e:
-        dados["imagens_erro"] = str(e)
+        dados["exposicoes"] = expos
 
-    try:
-        coms = Comentario.query.all()
-        dados["comentarios"] = [{
-            "id": c.id,
-            "texto": c.texto,
-            "autor_id": c.id_utilizador,
-            "imagem_id": c.id_imagem
-        } for c in coms]
-    except Exception as e:
-        dados["comentarios_erro"] = str(e)
+        imgs = []
+        for i in Imagem.query.all():
+            ids_expos = [e.id for e in i.exposicoes]
+            imgs.append({
+                "id": i.id, "titulo": i.titulo, "autor_id": i.id_utilizador, 
+                "cat_id": i.id_categoria, "exposicoes": str(ids_expos)
+            })
+        dados["imagens"] = imgs
 
-    try:
-        likes = Reacao.query.all()
-        dados["reacoes"] = [{
-            "id": r.id,
-            "tipo": r.tipo,
-            "autor_id": r.id_utilizador,
-            "imagem_id": r.id_imagem
-        } for r in likes]
+        dados["comentarios"] = [
+            {"id": c.id, "texto": c.texto, "img_id": c.id_imagem, "user_id": c.id_utilizador} 
+            for c in Comentario.query.all()
+        ]
+        
+        dados["reacoes_total"] = Reacao.query.count()
+        
     except Exception as e:
-        dados["reacoes_erro"] = str(e)
+        return f"Erro ao ler base de dados: {str(e)}"
 
-    return jsonify(dados)
+    formato = request.args.get("format", "tabela")
+
+    if formato == "json":
+        return jsonify(dados)
+
+    html_template = """
+    <!DOCTYPE html>
+    <html lang="pt">
+    <head>
+        <meta charset="UTF-8">
+        <title>Debug Base de Dados</title>
+        <style>
+            body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+            h1 { color: #333; }
+            h2 { border-bottom: 2px solid #666; padding-bottom: 5px; margin-top: 30px; }
+            table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+            th, td { padding: 10px; border: 1px solid #ddd; text-align: left; font-size: 14px; }
+            th { background-color: #007bff; color: white; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            tr:hover { background-color: #f1f1f1; }
+            .badge { background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+            .nav { margin-bottom: 20px; }
+            .btn { text-decoration: none; background: #333; color: white; padding: 8px 15px; border-radius: 5px; }
+        </style>
+    </head>
+    <body>
+        <h1>🔍 Inspetor de Base de Dados</h1>
+        <div class="nav">
+            <a href="/" class="btn">← Voltar ao Site</a>
+            <a href="?format=json" class="btn" style="background:#17a2b8;">Ver JSON Bruto</a>
+        </div>
+
+        <h2>Utilizadores ({{ dados.utilizadores|length }})</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Google ID</th></tr></thead>
+            <tbody>
+                {% for u in dados.utilizadores %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.nome }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.tipo }}</td>
+                    <td>{{ u.google_id }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Imagens & Exposições ({{ dados.imagens|length }})</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Título</th><th>Autor ID</th><th>Cat ID</th><th>IDs Exposições (N:M)</th></tr></thead>
+            <tbody>
+                {% for i in dados.imagens %}
+                <tr>
+                    <td>{{ i.id }}</td>
+                    <td>{{ i.titulo }}</td>
+                    <td>{{ i.autor_id }}</td>
+                    <td>{{ i.cat_id }}</td>
+                    <td>
+                        {% if i.exposicoes != "[]" %}
+                            <span class="badge">{{ i.exposicoes }}</span>
+                        {% else %}
+                            <span style="color:#ccc">Nenhuma</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Exposições ({{ dados.exposicoes|length }})</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Nome</th><th>Datas/Mês</th><th>Ativo</th></tr></thead>
+            <tbody>
+                {% for e in dados.exposicoes %}
+                <tr>
+                    <td>{{ e.id }}</td>
+                    <td>{{ e.nome }}</td>
+                    <td>{{ e.datas }}</td>
+                    <td>{{ 'Sim' if e.ativo else 'Não' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Categorias ({{ dados.categorias|length }})</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Nome</th></tr></thead>
+            <tbody>
+                {% for c in dados.categorias %}
+                <tr><td>{{ c.id }}</td><td>{{ c.nome }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <h2>Resumo Extra</h2>
+        <p><strong>Total de Comentários:</strong> {{ dados.comentarios|length }}</p>
+        <p><strong>Total de Reações (Likes):</strong> {{ dados.reacoes_total }}</p>
+
+    </body>
+    </html>
+    """
+    return render_template_string(html_template, dados=dados)
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

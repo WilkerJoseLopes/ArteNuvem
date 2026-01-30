@@ -996,45 +996,45 @@ def api_categorias():
 
 @app.route("/api/exposicoes/<int:exposicao_id>/top", methods=["GET"])
 def api_exposicao_top(exposicao_id):
-    exposicao = Exposicao.query.get_or_404(exposicao_id)
-    
-    # Obter apenas imagens associadas a esta exposição
-    q_imgs = Imagem.query.filter(Imagem.exposicoes.any(Exposicao.id == exposicao_id))
-    img_ids = [i.id for i in q_imgs.with_entities(Imagem.id).all()]
+    exposicao = Exposicao.query.get_or_404(exposicao_id)
+    
+    # Obter apenas imagens associadas a esta exposição
+    q_imgs = Imagem.query.filter(Imagem.exposicoes.any(Exposicao.id == exposicao_id))
+    img_ids = [i.id for i in q_imgs.with_entities(Imagem.id).all()]
 
-    if not img_ids:
-        return jsonify({
-            "exposicao_id": exposicao.id,
-            "exposicao_nome": getattr(exposicao, "nome", None),
-            "top": []
-        })
+    if not img_ids:
+        return jsonify({
+            "exposicao_id": exposicao.id,
+            "exposicao_nome": getattr(exposicao, "nome", None),
+            "top": []
+        })
 
-    # Consulta atualizada para contar Likes (Reacao)
-    rows = db.session.query(
-        Imagem,
-        func.count(Reacao.id).label("total_likes")
-    ).outerjoin(Reacao, (Reacao.id_imagem == Imagem.id) & (Reacao.tipo == 'like')) \
-     .filter(Imagem.id.in_(img_ids)) \
-     .group_by(Imagem.id) \
-     .order_by(desc("total_likes")) \
-     .limit(10).all()
-     
-    def to_min(img, likes):
-        return {
-            "id": getattr(img, "id", None),
-            "titulo": getattr(img, "titulo", None),
-            "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
-            "categoria_texto": getattr(img, "categoria_texto", None),
-            "votos": int(likes) 
-        }
-    
-    top = [to_min(img, likes) for img, likes in rows]
-    return jsonify({
-        "exposicao_id": exposicao.id,
-        "exposicao_nome": getattr(exposicao, "nome", None),
-        "top": top
-    })
-
+    # Consulta atualizada para contar Likes (Reacao)
+    rows = db.session.query(
+        Imagem,
+        func.count(Reacao.id).label("total_likes")
+    ).outerjoin(Reacao, (Reacao.id_imagem == Imagem.id) & (Reacao.tipo == 'like')) \
+     .filter(Imagem.id.in_(img_ids)) \
+     .group_by(Imagem.id) \
+     .order_by(desc("total_likes")) \
+     .limit(10).all()
+     
+    def to_min(img, likes):
+        return {
+            "id": getattr(img, "id", None),
+            "titulo": getattr(img, "titulo", None),
+            "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+            "categoria_texto": getattr(img, "categoria_texto", None),
+            "votos": int(likes) 
+        }
+    
+    top = [to_min(img, likes) for img, likes in rows]
+    return jsonify({
+        "exposicao_id": exposicao.id,
+        "exposicao_nome": getattr(exposicao, "nome", None),
+        "top": top
+    })
+    
 @app.route("/login")
 def login():
     redirect_uri = url_for("google_callback", _external=True)
@@ -1231,6 +1231,7 @@ def migrar_dados_v2():
     return "<br>".join(log) + "<br><br><a href='/'>Voltar</a>"
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

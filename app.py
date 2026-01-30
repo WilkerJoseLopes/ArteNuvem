@@ -23,7 +23,8 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import func, desc
 
 from config import Config
-from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao
+
+from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao, imagem_exposicao
 
 from authlib.integrations.flask_client import OAuth
 
@@ -1182,35 +1183,51 @@ def ver_base_dados():
     dados = {}
 
     try:
+        # 1. Utilizadores
         dados["utilizadores"] = [
             {"id": u.id, "nome": u.nome, "email": u.email, "tipo": u.tipo_utilizador, "google_id": u.google_id} 
-            for u in Utilizador.query.all()
+            for u in Utilizador.query.order_by(Utilizador.id).all()
         ]
-        dados["categorias"] = [{"id": c.id, "nome": c.nome} for c in Categoria.query.all()]
         
+        # 2. Categorias
+        dados["categorias"] = [{"id": c.id, "nome": c.nome} for c in Categoria.query.order_by(Categoria.id).all()]
+        
+        # 3. Exposições
         expos = []
-        for e in Exposicao.query.all():
+        for e in Exposicao.query.order_by(Exposicao.id).all():
             expos.append({
                 "id": e.id, "nome": e.nome, "ativo": e.ativo, 
                 "datas": f"{e.start_date} a {e.end_date}" if e.start_date else e.mes
             })
         dados["exposicoes"] = expos
 
+        # 4. Imagens
         imgs = []
-        for i in Imagem.query.all():
-            ids_expos = [e.id for e in i.exposicoes]
+        for i in Imagem.query.order_by(Imagem.id).all():
             imgs.append({
                 "id": i.id, "titulo": i.titulo, "autor_id": i.id_utilizador, 
-                "cat_id": i.id_categoria, "exposicoes": str(ids_expos)
+                "cat_id": i.id_categoria, "data": i.data_upload
             })
         dados["imagens"] = imgs
 
+        # 5. Comentários (Tabela Completa)
         dados["comentarios"] = [
-            {"id": c.id, "texto": c.texto, "img_id": c.id_imagem, "user_id": c.id_utilizador} 
-            for c in Comentario.query.all()
+            {"id": c.id, "texto": c.texto, "img_id": c.id_imagem, "user_id": c.id_utilizador, "data": c.data} 
+            for c in Comentario.query.order_by(Comentario.id).all()
         ]
         
-        dados["reacoes_total"] = Reacao.query.count()
+        # 6. Reações (Tabela Completa)
+        dados["reacoes"] = [
+            {"id": r.id, "tipo": r.tipo, "img_id": r.id_imagem, "user_id": r.id_utilizador}
+            for r in Reacao.query.order_by(Reacao.id).all()
+        ]
+
+        # 7. Tabela Intermédia (Imagem <-> Exposição)
+        # Como é uma tabela db.Table e não uma Classe, consultamos assim:
+        associacoes = db.session.query(imagem_exposicao).all()
+        dados["associacoes"] = [
+            {"img_id": row[0], "exp_id": row[1]} for row in associacoes
+        ]
         
     except Exception as e:
         return f"Erro ao ler base de dados: {str(e)}"
@@ -1225,29 +1242,29 @@ def ver_base_dados():
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <title>Debug Base de Dados</title>
+        <title>Debug Base de Dados Completa</title>
         <style>
             body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-            h1 { color: #333; }
-            h2 { border-bottom: 2px solid #666; padding-bottom: 5px; margin-top: 30px; }
-            table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-            th, td { padding: 10px; border: 1px solid #ddd; text-align: left; font-size: 14px; }
-            th { background-color: #007bff; color: white; }
+            h1 { color: #333; text-align: center;}
+            h2 { border-bottom: 2px solid #666; padding-bottom: 5px; margin-top: 40px; color: #444; }
+            table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-bottom: 10px; }
+            th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; font-size: 13px; }
+            th { background-color: #2c3e50; color: white; }
             tr:nth-child(even) { background-color: #f9f9f9; }
             tr:hover { background-color: #f1f1f1; }
-            .badge { background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-            .nav { margin-bottom: 20px; }
-            .btn { text-decoration: none; background: #333; color: white; padding: 8px 15px; border-radius: 5px; }
+            .nav { margin-bottom: 20px; text-align: center; }
+            .btn { text-decoration: none; background: #333; color: white; padding: 10px 20px; border-radius: 5px; margin: 0 10px; }
+            .count { font-size: 0.8em; color: #666; font-weight: normal; }
         </style>
     </head>
     <body>
-        <h1>🔍 Inspetor de Base de Dados</h1>
+        <h1>🔍 Base de Dados Completa (7 Tabelas)</h1>
         <div class="nav">
             <a href="/" class="btn">← Voltar ao Site</a>
             <a href="?format=json" class="btn" style="background:#17a2b8;">Ver JSON Bruto</a>
         </div>
 
-        <h2>Utilizadores ({{ dados.utilizadores|length }})</h2>
+        <h2>1. Utilizadores <span class="count">({{ dados.utilizadores|length }} registos)</span></h2>
         <table>
             <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Google ID</th></tr></thead>
             <tbody>
@@ -1263,29 +1280,17 @@ def ver_base_dados():
             </tbody>
         </table>
 
-        <h2>Imagens & Exposições ({{ dados.imagens|length }})</h2>
+        <h2>2. Categorias <span class="count">({{ dados.categorias|length }} registos)</span></h2>
         <table>
-            <thead><tr><th>ID</th><th>Título</th><th>Autor ID</th><th>Cat ID</th><th>IDs Exposições (N:M)</th></tr></thead>
+            <thead><tr><th>ID</th><th>Nome</th></tr></thead>
             <tbody>
-                {% for i in dados.imagens %}
-                <tr>
-                    <td>{{ i.id }}</td>
-                    <td>{{ i.titulo }}</td>
-                    <td>{{ i.autor_id }}</td>
-                    <td>{{ i.cat_id }}</td>
-                    <td>
-                        {% if i.exposicoes != "[]" %}
-                            <span class="badge">{{ i.exposicoes }}</span>
-                        {% else %}
-                            <span style="color:#ccc">Nenhuma</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                {% for c in dados.categorias %}
+                <tr><td>{{ c.id }}</td><td>{{ c.nome }}</td></tr>
                 {% endfor %}
             </tbody>
         </table>
 
-        <h2>Exposições ({{ dados.exposicoes|length }})</h2>
+        <h2>3. Exposições <span class="count">({{ dados.exposicoes|length }} registos)</span></h2>
         <table>
             <thead><tr><th>ID</th><th>Nome</th><th>Datas/Mês</th><th>Ativo</th></tr></thead>
             <tbody>
@@ -1300,20 +1305,70 @@ def ver_base_dados():
             </tbody>
         </table>
 
-        <h2>Categorias ({{ dados.categorias|length }})</h2>
+        <h2>4. Imagens <span class="count">({{ dados.imagens|length }} registos)</span></h2>
         <table>
-            <thead><tr><th>ID</th><th>Nome</th></tr></thead>
+            <thead><tr><th>ID</th><th>Título</th><th>Autor ID</th><th>Cat ID</th><th>Data Upload</th></tr></thead>
             <tbody>
-                {% for c in dados.categorias %}
-                <tr><td>{{ c.id }}</td><td>{{ c.nome }}</td></tr>
+                {% for i in dados.imagens %}
+                <tr>
+                    <td>{{ i.id }}</td>
+                    <td>{{ i.titulo }}</td>
+                    <td>{{ i.autor_id }}</td>
+                    <td>{{ i.cat_id }}</td>
+                    <td>{{ i.data }}</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
-        
-        <h2>Resumo Extra</h2>
-        <p><strong>Total de Comentários:</strong> {{ dados.comentarios|length }}</p>
-        <p><strong>Total de Reações (Likes):</strong> {{ dados.reacoes_total }}</p>
 
+        <h2 style="color: #d35400;">5. Imagem_Exposicao (Tabela Intermédia) <span class="count">({{ dados.associacoes|length }} registos)</span></h2>
+        <p><i>Esta tabela liga as Imagens às Exposições (Relação N:M).</i></p>
+        <table>
+            <thead><tr><th>ID Imagem</th><th>ID Exposição</th></tr></thead>
+            <tbody>
+                {% for a in dados.associacoes %}
+                <tr>
+                    <td>{{ a.img_id }}</td>
+                    <td>{{ a.exp_id }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="2">Sem associações.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>6. Comentários <span class="count">({{ dados.comentarios|length }} registos)</span></h2>
+        <table>
+            <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Data</th></tr></thead>
+            <tbody>
+                {% for c in dados.comentarios %}
+                <tr>
+                    <td>{{ c.id }}</td>
+                    <td>{{ c.texto }}</td>
+                    <td>{{ c.img_id }}</td>
+                    <td>{{ c.user_id }}</td>
+                    <td>{{ c.data }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>7. Reações (Likes) <span class="count">({{ dados.reacoes|length }} registos)</span></h2>
+        <table>
+            <thead><tr><th>ID</th><th>Tipo</th><th>Img ID</th><th>User ID</th></tr></thead>
+            <tbody>
+                {% for r in dados.reacoes %}
+                <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.tipo }}</td>
+                    <td>{{ r.img_id }}</td>
+                    <td>{{ r.user_id }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <br><br>
     </body>
     </html>
     """
@@ -1321,6 +1376,7 @@ def ver_base_dados():
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

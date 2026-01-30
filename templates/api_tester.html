@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testador de Web Service</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; background-color: #f0f2f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        select, input, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; min-height: 100px; }
+        .status { margin-bottom: 10px; font-weight: bold; color: #555; }
+        .note { font-size: 0.9em; color: #666; margin-bottom: 20px; background: #e9ecef; padding: 10px; border-left: 4px solid #007bff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📡 Consumidor de API (Web Service)</h1>
+    
+    <div class="note">
+        <p><strong>Conceito:</strong> Esta página atua como um <em>Cliente</em>. Quando clicas em "Fazer Pedido", o JavaScript envia um pedido HTTP GET para o <em>Servidor</em> (o teu Web Service Flask), recebe a resposta em JSON e mostra-a abaixo.</p>
+    </div>
+
+    <div class="controls">
+        <select id="endpointSelector" onchange="atualizarCampos()">
+            <option value="/api/imagens">Todas as Imagens (/api/imagens)</option>
+            <option value="/api/imagens/{id}">Detalhe Imagem (/api/imagens/{id})</option>
+            <option value="/api/categorias">Categorias (/api/categorias)</option>
+            <option value="/api/exposicoes/{id}/top">Top Exposição (/api/exposicoes/{id}/top)</option>
+        </select>
+
+        <input type="number" id="idInput" placeholder="Insira o ID (ex: 1)" style="display:none; width: 150px;">
+        
+        <button onclick="consumirApi()">Fazer Pedido GET</button>
+    </div>
+
+    <div class="status" id="urlStatus">URL do Pedido: ...</div>
+    
+    <pre id="jsonOutput">O resultado aparecerá aqui...</pre>
+</div>
+
+<script>
+    function atualizarCampos() {
+        const selector = document.getElementById('endpointSelector');
+        const idInput = document.getElementById('idInput');
+        if (selector.value.includes('{id}')) {
+            idInput.style.display = 'block';
+        } else {
+            idInput.style.display = 'none';
+        }
+    }
+
+    async function consumirApi() {
+        const output = document.getElementById('jsonOutput');
+        const status = document.getElementById('urlStatus');
+        const selector = document.getElementById('endpointSelector');
+        const idVal = document.getElementById('idInput').value;
+
+        let url = selector.value;
+
+        if (url.includes('{id}')) {
+            if (!idVal) {
+                alert("Por favor, escreve um ID numérico.");
+                return;
+            }
+            url = url.replace('{id}', idVal);
+        }
+
+        status.innerText = "A carregar: " + url + "...";
+        output.innerText = "Aguarde...";
+
+        try {
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
+
+            const dados = await response.json();
+
+
+            status.innerText = "URL do Pedido: " + window.location.origin + url + " (Status: " + response.status + ")";
+            output.innerText = JSON.stringify(dados, null, 4);
+
+        } catch (error) {
+            status.innerText = "Erro ao contactar o servidor.";
+            output.innerText = "Erro: " + error.message;
+        }
+    }
+</script>
+
+</body>
+</html>

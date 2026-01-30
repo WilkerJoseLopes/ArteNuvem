@@ -22,7 +22,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import func, desc
 
 from config import Config
-from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao, Voto
+from models import db, Utilizador, Categoria, Imagem, Comentario, Reacao, Exposicao
 
 from authlib.integrations.flask_client import OAuth
 
@@ -426,10 +426,7 @@ def publicar():
             flash("Título é obrigatório.", "error")
             return redirect(request.url)
 
-        filename = secure_filename(ficheiro.filename)
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-        filename = f"{timestamp}_{filename}"
-
+        # Upload para Supabase
         caminho_url, object_key = upload_imagem_supabase(ficheiro)
 
         categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
@@ -445,25 +442,29 @@ def publicar():
         if tags:
             img.tags = tags
 
+        # --- ALTERAÇÃO AQUI: Lógica Many-to-Many ---
         selected = request.form.getlist("exposicoes")
         if selected:
-            img.exposicoes_ids = ",".join([str(int(x)) for x in selected if x])
+            for eid in selected:
+                if eid:
+                    exp_obj = Exposicao.query.get(int(eid))
+                    if exp_obj:
+                        img.exposicoes.append(exp_obj)
+        # -------------------------------------------
 
         db.session.add(img)
         db.session.commit()
         flash("Publicado com sucesso!", "success")
         return redirect(url_for("index"))
 
-    
+    # GET request
     categorias = Categoria.query.all()
-
     hoje = date.today()
     exposicoes_all = Exposicao.query.filter_by(ativo=True).all()
     exposicoes_disponiveis = []
 
     for e in exposicoes_all:
         valido = False
-
         if e.mes_inteiro and e.mes:
             try:
                 m, y = map(int, e.mes.split("/"))
@@ -486,7 +487,8 @@ def publicar():
         selected_categoria=None,
     )
 
-
+@app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
+@login_required
 @app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
 @login_required
 def apagar_imagem(imagem_id: int):
@@ -498,13 +500,16 @@ def apagar_imagem(imagem_id: int):
         flash("Não tens permissão para apagar esta imagem.", "error")
         return redirect(url_for("index"))
 
-
-    
+    # Apagar dependências
     Comentario.query.filter_by(id_imagem=imagem_id).delete()
     Reacao.query.filter_by(id_imagem=imagem_id).delete()
-    Voto.query.filter_by(id_imagem=imagem_id).delete()
-
     
+    # REMOVIDO: Voto.query.filter_by(id_imagem=imagem_id).delete()
+    
+    # Limpar associações Many-to-Many antes de apagar
+    img.exposicoes = []
+
+    # Tentar apagar ficheiro local (se existir)
     try:
         caminho_relativo = (img.caminho_armazenamento or "").lstrip("/")
         caminho_ficheiro = os.path.join(app.root_path, caminho_relativo)
@@ -514,14 +519,12 @@ def apagar_imagem(imagem_id: int):
             except Exception as e:
                 app.logger.warning("Falha a remover ficheiro local: %s", e)
     except Exception:
-        
         pass
 
-    
     db.session.delete(img)
     db.session.commit()
 
-    
+    # Apagar do Supabase
     try:
         if img.caminho_armazenamento and supabase_service:
             object_key = img.caminho_armazenamento.rstrip("/").split("/")[-1]
@@ -531,8 +534,6 @@ def apagar_imagem(imagem_id: int):
 
     flash("Imagem apagada com sucesso.", "success")
     return redirect(url_for("index"))
-
-
 
 
 @app.route("/comentario", methods=["POST"])
@@ -669,22 +670,26 @@ def exposicao():
 
         q = Imagem.query
 
-        cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{e.id}%")
+        # --- ALTERAÇÃO: Lógica de Associação Many-to-Many ---
+        # Verifica se a imagem está na lista de 'imagens_associadas' desta exposição
+        # (Isso funciona graças ao backref definido no models.py ou relação direta)
+        manual_cond = Imagem.exposicoes.any(Exposicao.id == e.id)
+        # ----------------------------------------------------
 
         cond_intervalo = True
         if e.start_date and e.end_date:
             cond_intervalo = (Imagem.data_upload >= datetime.combine(e.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(e.end_date, datetime.max.time()))
 
         if getattr(e, "usar_categorias", False) and getattr(e, "categoria_id", None):
-            q = q.filter((cond_inscritas) | ((Imagem.id_categoria == e.categoria_id) & cond_intervalo))
+            q = q.filter((manual_cond) | ((Imagem.id_categoria == e.categoria_id) & cond_intervalo))
         elif getattr(e, "usar_tags", False) and getattr(e, "tags_filtro", None):
             tags = [t.strip() for t in (e.tags_filtro or "").split(",") if t.strip()]
             tag_cond = False
             for t in tags:
                 tag_cond = tag_cond | Imagem.tags.ilike(f"%{t}%")
-            q = q.filter((cond_inscritas) | (tag_cond & cond_intervalo))
+            q = q.filter((manual_cond) | (tag_cond & cond_intervalo))
         else:
-            q = q.filter((cond_inscritas) | cond_intervalo)
+            q = q.filter((manual_cond) | cond_intervalo)
 
         ids = [row.id for row in q.with_entities(Imagem.id).all()]
         top = []
@@ -846,6 +851,7 @@ def exportar_exposicao():
     pdf_url = None
     exposicao_selecionada = None
     top = []
+    
     if request.method == "POST":
         exposicao_id = request.form.get("exposicao_id", type=int)
         if exposicao_id:
@@ -853,21 +859,25 @@ def exportar_exposicao():
             if exposicao_selecionada:
                 
                 q = Imagem.query
-                cond_inscritas = Imagem.exposicoes_ids.ilike(f"%{exposicao_selecionada.id}%")
+                
+                # --- ALTERAÇÃO: Filtro Many-to-Many ---
+                manual_cond = Imagem.exposicoes.any(Exposicao.id == exposicao_selecionada.id)
+                # --------------------------------------
+
                 cond_intervalo = True
                 if exposicao_selecionada.start_date and exposicao_selecionada.end_date:
                     cond_intervalo = (Imagem.data_upload >= datetime.combine(exposicao_selecionada.start_date, datetime.min.time())) & (Imagem.data_upload <= datetime.combine(exposicao_selecionada.end_date, datetime.max.time()))
 
                 if getattr(exposicao_selecionada, "usar_categorias", False) and getattr(exposicao_selecionada, "categoria_id", None):
-                    q = q.filter((cond_inscritas) | ((Imagem.id_categoria == exposicao_selecionada.categoria_id) & cond_intervalo))
+                    q = q.filter((manual_cond) | ((Imagem.id_categoria == exposicao_selecionada.categoria_id) & cond_intervalo))
                 elif getattr(exposicao_selecionada, "usar_tags", False) and getattr(exposicao_selecionada, "tags_filtro", None):
                     tags = [t.strip() for t in (exposicao_selecionada.tags_filtro or "").split(",") if t.strip()]
                     tag_cond = False
                     for t in tags:
                         tag_cond = tag_cond | Imagem.tags.ilike(f"%{t}%")
-                    q = q.filter((cond_inscritas) | (tag_cond & cond_intervalo))
+                    q = q.filter((manual_cond) | (tag_cond & cond_intervalo))
                 else:
-                    q = q.filter((cond_inscritas) | cond_intervalo)
+                    q = q.filter((manual_cond) | cond_intervalo)
 
                 ids = [r.id for r in q.with_entities(Imagem.id).all()]
                 if ids:
@@ -881,7 +891,6 @@ def exportar_exposicao():
                         .all()
                     )
 
-                
                 html_content = render_template("catalogo_exposicao.html", exposicao=exposicao_selecionada, top=top, now=lambda: datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
                 html_path = os.path.join(TEMP_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.html")
                 pdf_path = os.path.join(PDF_FOLDER, f"catalogo_exposicao_{exposicao_selecionada.id}.pdf")
@@ -896,8 +905,8 @@ def exportar_exposicao():
                 except Exception as ex:
                     app.logger.exception("Erro ao gerar PDF: %s", ex)
                     flash("Falha ao gerar PDF. Vê os logs.", "error")
+                    
     return render_template("exportar_exposicao.html", exposicoes=exposicoes, pdf_url=pdf_url, exposicao=exposicao_selecionada, top=top, categorias=categorias, query_text="", selected_categoria=None)
-
 
 @app.route("/catalogo")
 def gerar_catalogo():
@@ -981,33 +990,46 @@ def api_imagens():
         "imagens": [to_dict(i) for i in items]
     })
 
-@app.route("/api/imagens/<int:imagem_id>", methods=["GET"])
-def api_imagem_detail(imagem_id):
-    img = Imagem.query.get_or_404(imagem_id)
-    votos = Reacao.query.filter_by(id_imagem=imagem_id, tipo="like").count()
-    num_comentarios = Comentario.query.filter_by(id_imagem=imagem_id).count()
+@app.route("/api/exposicoes/<int:exposicao_id>/top", methods=["GET"])
+def api_exposicao_top(exposicao_id):
+    exposicao = Exposicao.query.get_or_404(exposicao_id)
+    
+    # Obter apenas imagens associadas a esta exposição (através da nova relação)
+    q_imgs = Imagem.query.filter(Imagem.exposicoes.any(Exposicao.id == exposicao_id))
+    img_ids = [i.id for i in q_imgs.with_entities(Imagem.id).all()]
 
-    caminho = getattr(img, "caminho_armazenamento", "") or ""
-    if caminho.startswith("http://") or caminho.startswith("https://"):
-        url_publica = caminho
-    else:
-        url_publica = request.host_url.rstrip("/") + caminho
+    if not img_ids:
+        return jsonify({
+            "exposicao_id": exposicao.id,
+            "exposicao_nome": getattr(exposicao, "nome", None),
+            "top": []
+        })
 
-    data = {
-        "id": getattr(img, "id", None),
-        "titulo": getattr(img, "titulo", None),
-        "caminho_armazenamento": caminho,
-        "url_publica": url_publica,
-        "categoria_texto": getattr(img, "categoria_texto", None),
-        "id_categoria": getattr(img, "id_categoria", None),
-        "tags": getattr(img, "tags", None),
-        "id_utilizador": getattr(img, "id_utilizador", None),
-        "data_upload": getattr(img, "data_upload").isoformat() if getattr(img, "data_upload", None) else None,
-        "votos": int(votos),
-        "comentarios": int(num_comentarios)
-    }
-
-    return jsonify(data)
+    # Consulta atualizada para contar Likes (Reacao) em vez de Votos
+    rows = db.session.query(
+        Imagem,
+        func.count(Reacao.id).label("total_likes")
+    ).outerjoin(Reacao, (Reacao.id_imagem == Imagem.id) & (Reacao.tipo == 'like')) \
+     .filter(Imagem.id.in_(img_ids)) \
+     .group_by(Imagem.id) \
+     .order_by(desc("total_likes")) \
+     .limit(10).all()
+     
+    def to_min(img, likes):
+        return {
+            "id": getattr(img, "id", None),
+            "titulo": getattr(img, "titulo", None),
+            "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
+            "categoria_texto": getattr(img, "categoria_texto", None),
+            "votos": int(likes) # Mantive a chave 'votos' para não quebrar front-ends que dependam desse nome
+        }
+    
+    top = [to_min(img, likes) for img, likes in rows]
+    return jsonify({
+        "exposicao_id": exposicao.id,
+        "exposicao_nome": getattr(exposicao, "nome", None),
+        "top": top
+    })
 
 
 @app.route("/api/categorias", methods=["GET"])
@@ -1161,6 +1183,77 @@ def fix_exposicoes_once():
     db.session.commit()
     return f"Migração concluída. Exposições corrigidas: {total}"
 
+@app.route("/admin/migrar_dados_v2")
+@login_required
+def migrar_dados_v2():
+    """
+    Rota única para migrar dados de 'Exposicoes_Ids' (CSV) para a tabela de associação
+    e remover a tabela Voto antiga.
+    """
+    user = current_user()
+    user_email = (user.email or "").strip().lower() if user else ""
+    if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
+        return "Acesso negado. Apenas admin."
 
+    log = []
+    try:
+        # 1. Garantir que as tabelas existem (especialmente a nova tabela de associação criada no models.py)
+        db.create_all()
+        log.append("Base de dados atualizada (tabelas criadas).")
+
+        # 2. Migrar dados da coluna antiga (CSV)
+        # Usamos SQL direto porque se removermos a coluna do models.py, o SQLAlchemy deixa de a ver.
+        conn = db.engine.connect()
+        
+        try:
+            # Tenta ler a coluna antiga. Se falhar, é porque já foi apagada.
+            query = text('SELECT "ID_Imagem", "Exposicoes_Ids" FROM imagem WHERE "Exposicoes_Ids" IS NOT NULL AND "Exposicoes_Ids" != \'\'')
+            result = conn.execute(query)
+            rows = result.fetchall()
+            
+            count_migrados = 0
+            for row in rows:
+                img_id = row[0]
+                csv_ids = row[1]
+                
+                # Converter "1, 3" para lista [1, 3]
+                ids_list = [x.strip() for x in csv_ids.split(",") if x.strip()]
+                
+                img_obj = Imagem.query.get(img_id)
+                if img_obj:
+                    for s_id in ids_list:
+                        try:
+                            exp_id = int(s_id)
+                            exp_obj = Exposicao.query.get(exp_id)
+                            # Se a exposição existe e ainda não está associada
+                            if exp_obj and exp_obj not in img_obj.exposicoes:
+                                img_obj.exposicoes.append(exp_obj)
+                                count_migrados += 1
+                        except ValueError:
+                            pass
+            
+            db.session.commit()
+            log.append(f"Sucesso: {count_migrados} associações migradas da coluna CSV para a nova tabela.")
+
+        except Exception as e:
+            db.session.rollback()
+            log.append(f"Aviso na migração de dados (talvez já feito?): {e}")
+
+        # 3. Apagar tabela Voto (Limpeza)
+        try:
+            conn.execute(text('DROP TABLE IF EXISTS voto CASCADE'))
+            db.session.commit()
+            log.append("Tabela 'voto' apagada com sucesso.")
+        except Exception as e:
+            db.session.rollback()
+            log.append(f"Erro ao apagar tabela voto: {e}")
+
+        conn.close()
+
+    except Exception as e:
+        return f"Erro Crítico: {e}"
+
+    return "<br>".join(log) + "<br><br><a href='/'>Voltar</a>"
 if __name__ == "__main__":
     app.run(debug=True)
+

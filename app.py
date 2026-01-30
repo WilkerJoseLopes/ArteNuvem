@@ -489,8 +489,6 @@ def publicar():
 
 @app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
 @login_required
-@app.route("/apagar_imagem/<int:imagem_id>", methods=["POST"])
-@login_required
 def apagar_imagem(imagem_id: int):
     user = current_user()
     img = Imagem.query.get_or_404(imagem_id)
@@ -503,8 +501,6 @@ def apagar_imagem(imagem_id: int):
     # Apagar dependências
     Comentario.query.filter_by(id_imagem=imagem_id).delete()
     Reacao.query.filter_by(id_imagem=imagem_id).delete()
-    
-    # REMOVIDO: Voto.query.filter_by(id_imagem=imagem_id).delete()
     
     # Limpar associações Many-to-Many antes de apagar
     img.exposicoes = []
@@ -1256,4 +1252,5 @@ def migrar_dados_v2():
     return "<br>".join(log) + "<br><br><a href='/'>Voltar</a>"
 if __name__ == "__main__":
     app.run(debug=True)
+
 

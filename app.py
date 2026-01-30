@@ -1169,8 +1169,94 @@ def fix_exposicoes_once():
     db.session.commit()
     return f"Migração concluída. Exposições corrigidas: {total}"
 
+@app.route("/admin/ver_base_dados")
+@login_required
+def ver_base_dados():
+    user = current_user()
+    user_email = (user.email or "").strip().lower() if user else ""
+    if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
+        return jsonify({"erro": "Acesso negado. Apenas admin."}), 403
+
+    
+    dados = {}
+
+
+    try:
+        users = Utilizador.query.all()
+        dados["utilizadores"] = [{
+            "id": u.id,
+            "nome": u.nome,
+            "email": u.email,
+            "tipo": u.tipo_utilizador
+        } for u in users]
+    except Exception as e:
+        dados["utilizadores_erro"] = str(e)
+
+
+    try:
+        cats = Categoria.query.all()
+        dados["categorias"] = [{"id": c.id, "nome": c.nome} for c in cats]
+    except Exception as e:
+        dados["categorias_erro"] = str(e)
+
+    try:
+        expos = Exposicao.query.all()
+        dados["exposicoes"] = [{
+            "id": e.id,
+            "nome": e.nome,
+            "ativo": e.ativo,
+            "start_date": str(e.start_date) if e.start_date else None,
+            "end_date": str(e.end_date) if e.end_date else None
+        } for e in expos]
+    except Exception as e:
+        dados["exposicoes_erro"] = str(e)
+
+
+    try:
+        imgs = Imagem.query.all()
+        imgs_data = []
+        for i in imgs:
+        
+            expos_associadas = [e.id for e in i.exposicoes] 
+            
+            imgs_data.append({
+                "id": i.id,
+                "titulo": i.titulo,
+                "autor_id": i.id_utilizador,
+                "categoria_id": i.id_categoria,
+                "exposicoes_ids_associados": expos_associadas
+            })
+        dados["imagens"] = imgs_data
+    except Exception as e:
+        dados["imagens_erro"] = str(e)
+
+    try:
+        coms = Comentario.query.all()
+        dados["comentarios"] = [{
+            "id": c.id,
+            "texto": c.texto,
+            "autor_id": c.id_utilizador,
+            "imagem_id": c.id_imagem
+        } for c in coms]
+    except Exception as e:
+        dados["comentarios_erro"] = str(e)
+
+    try:
+        likes = Reacao.query.all()
+        dados["reacoes"] = [{
+            "id": r.id,
+            "tipo": r.tipo,
+            "autor_id": r.id_utilizador,
+            "imagem_id": r.id_imagem
+        } for r in likes]
+    except Exception as e:
+        dados["reacoes_erro"] = str(e)
+
+    return jsonify(dados)
+    
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

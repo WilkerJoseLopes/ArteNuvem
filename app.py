@@ -1373,9 +1373,18 @@ def ver_base_dados():
     </html>
     """
     return render_template_string(html_template, dados=dados)
+
+@app.route("/api/testar")
+def api_testar():
+    """
+    Página 'Cliente' para testar os Web Services.
+    Isto simula um site externo a consumir a tua API.
+    """
+    return render_template("api_tester.html")
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

@@ -1183,7 +1183,7 @@ def ver_base_dados():
     dados = {}
 
     try:
-        # 1. Utilizadores (Adicionado: foto_url)
+        # 1. Utilizadores
         dados["utilizadores"] = [
             {
                 "id": u.id, 
@@ -1196,10 +1196,10 @@ def ver_base_dados():
             for u in Utilizador.query.order_by(Utilizador.id).all()
         ]
         
-        # 2. Categorias (Já estava completo)
+        # 2. Categorias
         dados["categorias"] = [{"id": c.id, "nome": c.nome} for c in Categoria.query.order_by(Categoria.id).all()]
         
-        # 3. Exposições (Adicionado: descricao, imagem_destaque, flags booleanas, filtros, etc.)
+        # 3. Exposições
         expos = []
         for e in Exposicao.query.order_by(Exposicao.id).all():
             expos.append({
@@ -1219,11 +1219,10 @@ def ver_base_dados():
             })
         dados["exposicoes"] = expos
 
-        # 4. Imagens (Adicionado: tags, caminho, categoria_texto legacy)
+        # 4. Imagens
         imgs = []
         for i in Imagem.query.order_by(Imagem.id).all():
-            # Relação N:M
-            ids_expos = [e.id for e in i.exposicoes]
+            ids_expos = [e.id for e in i.exposicoes] # Relação N:M
             imgs.append({
                 "id": i.id, 
                 "titulo": i.titulo, 
@@ -1237,7 +1236,7 @@ def ver_base_dados():
             })
         dados["imagens"] = imgs
 
-        # 5. Comentários (Adicionado: id_comentario_pai)
+        # 5. Comentários
         dados["comentarios"] = [
             {
                 "id": c.id, 
@@ -1250,13 +1249,13 @@ def ver_base_dados():
             for c in Comentario.query.order_by(Comentario.id).all()
         ]
         
-        # 6. Reações (Já estava completo)
+        # 6. Reações
         dados["reacoes"] = [
             {"id": r.id, "tipo": r.tipo, "img_id": r.id_imagem, "user_id": r.id_utilizador}
             for r in Reacao.query.order_by(Reacao.id).all()
         ]
 
-        # 7. Tabela Intermédia (Completo)
+        # 7. Tabela Intermédia
         associacoes = db.session.query(imagem_exposicao).all()
         dados["associacoes"] = [
             {"img_id": row[0], "exp_id": row[1]} for row in associacoes
@@ -1277,154 +1276,207 @@ def ver_base_dados():
         <meta charset="UTF-8">
         <title>Debug Base de Dados Completa</title>
         <style>
-            body { font-family: sans-serif; padding: 20px; background: #f4f4f4; font-size: 13px; }
-            h1 { color: #333; text-align: center;}
-            h2 { border-bottom: 2px solid #666; padding-bottom: 5px; margin-top: 40px; color: #444; }
-            table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-bottom: 10px; display: block; overflow-x: auto; }
-            th, td { padding: 6px 10px; border: 1px solid #ddd; text-align: left; white-space: nowrap; }
-            th { background-color: #2c3e50; color: white; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-            tr:hover { background-color: #f1f1f1; }
-            .nav { margin-bottom: 20px; text-align: center; }
-            .btn { text-decoration: none; background: #333; color: white; padding: 10px 20px; border-radius: 5px; margin: 0 10px; }
-            .count { font-size: 0.8em; color: #666; font-weight: normal; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; font-size: 13px; margin: 0; }
+            h1 { color: #333; text-align: center; margin-bottom: 20px; }
+            h2 { 
+                border-left: 5px solid #007bff; 
+                padding-left: 10px; 
+                margin-top: 40px; 
+                color: #444; 
+                background: #e9ecef; 
+                padding: 10px; 
+            }
+            
+            /* O segredo para tabelas largas e responsivas */
+            .table-responsive {
+                width: 100%;
+                overflow-x: auto; /* Scroll apenas se necessário */
+                margin-bottom: 10px;
+                background: white;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                border-radius: 5px;
+            }
+
+            table { 
+                width: 100%; 
+                min-width: 800px; /* Garante que a tabela não encolhe demasiado */
+                border-collapse: collapse; 
+            }
+            
+            th, td { 
+                padding: 12px 15px; /* Mais espaço interno */
+                border-bottom: 1px solid #ddd; 
+                text-align: left; 
+                white-space: nowrap; /* Impede que o texto quebre linha */
+            }
+            
+            th { background-color: #2c3e50; color: white; position: sticky; top: 0; }
+            tr:nth-child(even) { background-color: #f8f9fa; }
+            tr:hover { background-color: #e2e6ea; }
+            
+            .nav { margin-bottom: 30px; text-align: center; }
+            .btn { 
+                text-decoration: none; 
+                background: #333; 
+                color: white; 
+                padding: 10px 20px; 
+                border-radius: 5px; 
+                margin: 0 10px; 
+                font-weight: bold;
+            }
+            .btn:hover { opacity: 0.9; }
+            .count { font-size: 0.8em; color: #666; font-weight: normal; margin-left: 10px; }
             .true { color: green; font-weight: bold; }
-            .false { color: red; }
-            .small-col { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+            .false { color: red; font-weight: bold; }
+            .small-col { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
         </style>
     </head>
     <body>
-        <h1>🔍 Base de Dados Completa (Todas as Colunas)</h1>
+        <h1>🔍 Base de Dados Completa</h1>
         <div class="nav">
             <a href="/" class="btn">← Voltar ao Site</a>
             <a href="?format=json" class="btn" style="background:#17a2b8;">Ver JSON Bruto</a>
         </div>
 
         <h2>1. Utilizadores <span class="count">({{ dados.utilizadores|length }})</span></h2>
-        <table>
-            <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Google ID</th><th>Foto URL</th></tr></thead>
-            <tbody>
-                {% for u in dados.utilizadores %}
-                <tr>
-                    <td>{{ u.id }}</td>
-                    <td>{{ u.nome }}</td>
-                    <td>{{ u.email }}</td>
-                    <td>{{ u.tipo }}</td>
-                    <td>{{ u.google_id }}</td>
-                    <td class="small-col" title="{{ u.foto_url }}">{{ u.foto_url }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Google ID</th><th>Foto URL</th></tr></thead>
+                <tbody>
+                    {% for u in dados.utilizadores %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.nome }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>{{ u.tipo }}</td>
+                        <td>{{ u.google_id }}</td>
+                        <td class="small-col" title="{{ u.foto_url }}">{{ u.foto_url }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <h2>2. Categorias <span class="count">({{ dados.categorias|length }})</span></h2>
-        <table>
-            <thead><tr><th>ID</th><th>Nome</th></tr></thead>
-            <tbody>
-                {% for c in dados.categorias %}
-                <tr><td>{{ c.id }}</td><td>{{ c.nome }}</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>ID</th><th>Nome</th></tr></thead>
+                <tbody>
+                    {% for c in dados.categorias %}
+                    <tr><td>{{ c.id }}</td><td>{{ c.nome }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <h2>3. Exposições <span class="count">({{ dados.exposicoes|length }})</span></h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th><th>Nome</th><th>Ativo</th><th>Datas</th><th>Mês/Ano</th><th>Mes Int.</th>
-                    <th>Desc.</th><th>Img Destaque</th><th>Tags (Bool)</th><th>Filtro Tags</th>
-                    <th>Cats (Bool)</th><th>Cat ID</th><th>Lista Cats</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for e in dados.exposicoes %}
-                <tr>
-                    <td>{{ e.id }}</td>
-                    <td>{{ e.nome }}</td>
-                    <td class="{{ 'true' if e.ativo else 'false' }}">{{ e.ativo }}</td>
-                    <td>{{ e.datas }}</td>
-                    <td>{{ e.mes }}</td>
-                    <td>{{ e.mes_inteiro }}</td>
-                    <td class="small-col" title="{{ e.descricao }}">{{ e.descricao }}</td>
-                    <td class="small-col">{{ e.img_destaque }}</td>
-                    <td>{{ e.usar_tags }}</td>
-                    <td>{{ e.tags_filtro }}</td>
-                    <td>{{ e.usar_cats }}</td>
-                    <td>{{ e.cat_id }}</td>
-                    <td>{{ e.cats_ids }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Nome</th><th>Ativo</th><th>Datas</th><th>Mês/Ano</th><th>Mes Int.</th>
+                        <th>Desc.</th><th>Img Destaque</th><th>Tags (Bool)</th><th>Filtro Tags</th>
+                        <th>Cats (Bool)</th><th>Cat ID</th><th>Lista Cats</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in dados.exposicoes %}
+                    <tr>
+                        <td>{{ e.id }}</td>
+                        <td>{{ e.nome }}</td>
+                        <td class="{{ 'true' if e.ativo else 'false' }}">{{ 'SIM' if e.ativo else 'NÃO' }}</td>
+                        <td>{{ e.datas }}</td>
+                        <td>{{ e.mes }}</td>
+                        <td>{{ e.mes_inteiro }}</td>
+                        <td class="small-col" title="{{ e.descricao }}">{{ e.descricao }}</td>
+                        <td class="small-col">{{ e.img_destaque }}</td>
+                        <td>{{ e.usar_tags }}</td>
+                        <td>{{ e.tags_filtro }}</td>
+                        <td>{{ e.usar_cats }}</td>
+                        <td>{{ e.cat_id }}</td>
+                        <td>{{ e.cats_ids }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <h2>4. Imagens <span class="count">({{ dados.imagens|length }})</span></h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th><th>Título</th><th>Autor ID</th><th>Cat ID</th><th>Cat (Txt)</th>
-                    <th>Tags</th><th>Data</th><th>Exposições (N:M)</th><th>Caminho (Supabase)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for i in dados.imagens %}
-                <tr>
-                    <td>{{ i.id }}</td>
-                    <td>{{ i.titulo }}</td>
-                    <td>{{ i.autor_id }}</td>
-                    <td>{{ i.cat_id }}</td>
-                    <td>{{ i.cat_txt }}</td>
-                    <td>{{ i.tags }}</td>
-                    <td>{{ i.data }}</td>
-                    <td>{{ i.exposicoes }}</td>
-                    <td class="small-col" title="{{ i.caminho }}">{{ i.caminho }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Título</th><th>Autor ID</th><th>Cat ID</th><th>Cat (Txt)</th>
+                        <th>Tags</th><th>Data</th><th>Exposições (N:M)</th><th>Caminho (Supabase)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in dados.imagens %}
+                    <tr>
+                        <td>{{ i.id }}</td>
+                        <td>{{ i.titulo }}</td>
+                        <td>{{ i.autor_id }}</td>
+                        <td>{{ i.cat_id }}</td>
+                        <td>{{ i.cat_txt }}</td>
+                        <td>{{ i.tags }}</td>
+                        <td>{{ i.data }}</td>
+                        <td>{{ i.exposicoes }}</td>
+                        <td class="small-col" title="{{ i.caminho }}">{{ i.caminho }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <h2 style="color: #d35400;">5. Imagem_Exposicao (Tabela Intermédia) <span class="count">({{ dados.associacoes|length }})</span></h2>
-        <table>
-            <thead><tr><th>ID Imagem</th><th>ID Exposição</th></tr></thead>
-            <tbody>
-                {% for a in dados.associacoes %}
-                <tr><td>{{ a.img_id }}</td><td>{{ a.exp_id }}</td></tr>
-                {% else %}
-                <tr><td colspan="2">Sem associações.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>ID Imagem</th><th>ID Exposição</th></tr></thead>
+                <tbody>
+                    {% for a in dados.associacoes %}
+                    <tr><td>{{ a.img_id }}</td><td>{{ a.exp_id }}</td></tr>
+                    {% else %}
+                    <tr><td colspan="2">Sem associações registadas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <h2>6. Comentários <span class="count">({{ dados.comentarios|length }})</span></h2>
-        <table>
-            <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Pai ID</th><th>Data</th></tr></thead>
-            <tbody>
-                {% for c in dados.comentarios %}
-                <tr>
-                    <td>{{ c.id }}</td>
-                    <td>{{ c.texto }}</td>
-                    <td>{{ c.img_id }}</td>
-                    <td>{{ c.user_id }}</td>
-                    <td>{{ c.pai_id }}</td>
-                    <td>{{ c.data }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Pai ID</th><th>Data</th></tr></thead>
+                <tbody>
+                    {% for c in dados.comentarios %}
+                    <tr>
+                        <td>{{ c.id }}</td>
+                        <td>{{ c.texto }}</td>
+                        <td>{{ c.img_id }}</td>
+                        <td>{{ c.user_id }}</td>
+                        <td>{{ c.pai_id }}</td>
+                        <td>{{ c.data }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <h2>7. Reações <span class="count">({{ dados.reacoes|length }})</span></h2>
-        <table>
-            <thead><tr><th>ID</th><th>Tipo</th><th>Img ID</th><th>User ID</th></tr></thead>
-            <tbody>
-                {% for r in dados.reacoes %}
-                <tr>
-                    <td>{{ r.id }}</td>
-                    <td>{{ r.tipo }}</td>
-                    <td>{{ r.img_id }}</td>
-                    <td>{{ r.user_id }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>ID</th><th>Tipo</th><th>Img ID</th><th>User ID</th></tr></thead>
+                <tbody>
+                    {% for r in dados.reacoes %}
+                    <tr>
+                        <td>{{ r.id }}</td>
+                        <td>{{ r.tipo }}</td>
+                        <td>{{ r.img_id }}</td>
+                        <td>{{ r.user_id }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <br><br>
     </body>
@@ -1442,6 +1494,7 @@ def api_testar():
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

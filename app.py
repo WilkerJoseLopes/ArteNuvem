@@ -990,7 +990,7 @@ def api_imagens():
 def api_exposicao_top(exposicao_id):
     exposicao = Exposicao.query.get_or_404(exposicao_id)
     
-    # Obter apenas imagens associadas a esta exposição (através da nova relação)
+    # Obter apenas imagens associadas a esta exposição
     q_imgs = Imagem.query.filter(Imagem.exposicoes.any(Exposicao.id == exposicao_id))
     img_ids = [i.id for i in q_imgs.with_entities(Imagem.id).all()]
 
@@ -1001,7 +1001,7 @@ def api_exposicao_top(exposicao_id):
             "top": []
         })
 
-    # Consulta atualizada para contar Likes (Reacao) em vez de Votos
+    # Consulta atualizada para contar Likes (Reacao)
     rows = db.session.query(
         Imagem,
         func.count(Reacao.id).label("total_likes")
@@ -1017,7 +1017,7 @@ def api_exposicao_top(exposicao_id):
             "titulo": getattr(img, "titulo", None),
             "caminho_armazenamento": getattr(img, "caminho_armazenamento", None),
             "categoria_texto": getattr(img, "categoria_texto", None),
-            "votos": int(likes) # Mantive a chave 'votos' para não quebrar front-ends que dependam desse nome
+            "votos": int(likes) 
         }
     
     top = [to_min(img, likes) for img, likes in rows]
@@ -1026,7 +1026,6 @@ def api_exposicao_top(exposicao_id):
         "exposicao_nome": getattr(exposicao, "nome", None),
         "top": top
     })
-
 
 @app.route("/api/categorias", methods=["GET"])
 def api_categorias():
@@ -1252,5 +1251,6 @@ def migrar_dados_v2():
     return "<br>".join(log) + "<br><br><a href='/'>Voltar</a>"
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 

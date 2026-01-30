@@ -1453,7 +1453,6 @@ def ver_base_dados():
                         <td>{{ c.texto }}</td>
                         <td>{{ c.img_id }}</td>
                         <td>{{ c.user_id }}</td>
-                        <td>{{ c.pai_id }}</td>
                         <td>{{ c.data }}</td>
                     </tr>
                     {% endfor %}
@@ -1494,6 +1493,7 @@ def api_testar():
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

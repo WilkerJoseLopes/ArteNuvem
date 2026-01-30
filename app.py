@@ -1158,79 +1158,31 @@ def fix_exposicoes_once():
     db.session.commit()
     return f"Migração concluída. Exposições corrigidas: {total}"
 
-@app.route("/admin/migrar_dados_v2")
+@app.route("/admin/force_delete_votos")
 @login_required
-def migrar_dados_v2():
-    """
-    Rota única para migrar dados de 'Exposicoes_Ids' (CSV) para a tabela de associação
-    e remover a tabela Voto antiga.
-    """
+def force_delete_votos():
+    # 1. Verificação de segurança (apenas admin)
     user = current_user()
     user_email = (user.email or "").strip().lower() if user else ""
+    
+    # Se não houver ADMIN_EMAILS definido ou o utilizador não estiver na lista:
     if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
-        return "Acesso negado. Apenas admin."
+        return "Acesso negado. Apenas o administrador pode executar esta ação."
 
-    log = []
     try:
-        # 1. Garantir que as tabelas existem (especialmente a nova tabela de associação criada no models.py)
-        db.create_all()
-        log.append("Base de dados atualizada (tabelas criadas).")
-
-        # 2. Migrar dados da coluna antiga (CSV)
-        # Usamos SQL direto porque se removermos a coluna do models.py, o SQLAlchemy deixa de a ver.
-        conn = db.engine.connect()
+        # 2. Executar o comando SQL direto na base de dados
+        with db.engine.begin() as conn:
+            # O CASCADE garante que se houver alguma restrição ligada, ela também é removida
+            conn.execute(text("DROP TABLE IF EXISTS voto CASCADE;"))
         
-        try:
-            # Tenta ler a coluna antiga. Se falhar, é porque já foi apagada.
-            query = text('SELECT "ID_Imagem", "Exposicoes_Ids" FROM imagem WHERE "Exposicoes_Ids" IS NOT NULL AND "Exposicoes_Ids" != \'\'')
-            result = conn.execute(query)
-            rows = result.fetchall()
-            
-            count_migrados = 0
-            for row in rows:
-                img_id = row[0]
-                csv_ids = row[1]
-                
-                # Converter "1, 3" para lista [1, 3]
-                ids_list = [x.strip() for x in csv_ids.split(",") if x.strip()]
-                
-                img_obj = Imagem.query.get(img_id)
-                if img_obj:
-                    for s_id in ids_list:
-                        try:
-                            exp_id = int(s_id)
-                            exp_obj = Exposicao.query.get(exp_id)
-                            # Se a exposição existe e ainda não está associada
-                            if exp_obj and exp_obj not in img_obj.exposicoes:
-                                img_obj.exposicoes.append(exp_obj)
-                                count_migrados += 1
-                        except ValueError:
-                            pass
-            
-            db.session.commit()
-            log.append(f"Sucesso: {count_migrados} associações migradas da coluna CSV para a nova tabela.")
-
-        except Exception as e:
-            db.session.rollback()
-            log.append(f"Aviso na migração de dados (talvez já feito?): {e}")
-
-        # 3. Apagar tabela Voto (Limpeza)
-        try:
-            conn.execute(text('DROP TABLE IF EXISTS voto CASCADE'))
-            db.session.commit()
-            log.append("Tabela 'voto' apagada com sucesso.")
-        except Exception as e:
-            db.session.rollback()
-            log.append(f"Erro ao apagar tabela voto: {e}")
-
-        conn.close()
+        return "Sucesso: A tabela 'voto' foi apagada da base de dados do Render."
 
     except Exception as e:
-        return f"Erro Crítico: {e}"
-
-    return "<br>".join(log) + "<br><br><a href='/'>Voltar</a>"
+        return f"Erro ao apagar tabela: {str(e)}"
+        
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

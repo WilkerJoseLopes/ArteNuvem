@@ -241,6 +241,17 @@ def ensure_tables():
         if app.config.get("TABLES_INITIALIZED"):
             return
         with app.app_context():
+            # --- BLOCO DE LIMPEZA FORÇADA ---
+            try:
+                # Tenta apagar a tabela Voto explicitamente usando a sessão
+                db.session.execute(text("DROP TABLE IF EXISTS voto CASCADE"))
+                db.session.commit()
+                app.logger.info(">>> SUCESSO: Tabela 'voto' apagada no arranque da aplicação. <<<")
+            except Exception as e:
+                db.session.rollback()
+                app.logger.warning(f">>> AVISO: Não foi possível apagar a tabela voto (talvez já não exista): {e}")
+            # -------------------------------
+
             db.create_all()
             default = ["Todos", "Fotos", "Desenhos", "Outro"]
             for nome in default:
@@ -1158,30 +1169,9 @@ def fix_exposicoes_once():
     db.session.commit()
     return f"Migração concluída. Exposições corrigidas: {total}"
 
-@app.route("/admin/force_delete_votos")
-@login_required
-def force_delete_votos():
-    # 1. Verificação de segurança (apenas admin)
-    user = current_user()
-    user_email = (user.email or "").strip().lower() if user else ""
-    
-    # Se não houver ADMIN_EMAILS definido ou o utilizador não estiver na lista:
-    if not user or (ADMIN_EMAILS and user_email not in ADMIN_EMAILS):
-        return "Acesso negado. Apenas o administrador pode executar esta ação."
-
-    try:
-        # 2. Executar o comando SQL direto na base de dados
-        with db.engine.begin() as conn:
-            # O CASCADE garante que se houver alguma restrição ligada, ela também é removida
-            conn.execute(text("DROP TABLE IF EXISTS voto CASCADE;"))
-        
-        return "Sucesso: A tabela 'voto' foi apagada da base de dados do Render."
-
-    except Exception as e:
-        return f"Erro ao apagar tabela: {str(e)}"
-        
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

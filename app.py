@@ -1466,7 +1466,7 @@ def ver_base_dados():
         <h2>6. Comentário <span class="count">({{ dados.comentarios|length }})</span></h2>
         <div class="table-responsive">
             <table>
-                <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Pai ID</th><th>Data</th></tr></thead>
+                <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Data</th></tr></thead>
                 <tbody>
                     {% for c in dados.comentarios %}
                     <tr>
@@ -1474,7 +1474,6 @@ def ver_base_dados():
                         <td>{{ c.texto }}</td>
                         <td>{{ c.img_id }}</td>
                         <td>{{ c.user_id }}</td>
-                        <td>{{ c.pai_id }}</td>
                         <td>{{ c.data }}</td>
                     </tr>
                     {% endfor %}
@@ -1515,6 +1514,7 @@ def api_testar():
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

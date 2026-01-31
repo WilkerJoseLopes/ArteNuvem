@@ -121,6 +121,7 @@ def upload_imagem_supabase(file):
 
 def ensure_google_columns():
     inspector = inspect(db.engine)
+    
     if not inspector.has_table("utilizador"):
         app.logger.info("ensure_google_columns: tabela 'utilizador' não existe ainda — skipping.")
         return
@@ -151,8 +152,7 @@ def ensure_google_columns():
         if "Tipo_Utilizador" not in cols.get('utilizador', []):
             conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Tipo_Utilizador" VARCHAR(50);'))
 
-        if "ID_Comentario_Pai" not in cols.get('comentario', []):
-            conn.execute(text('ALTER TABLE comentario ADD COLUMN IF NOT EXISTS "ID_Comentario_Pai" INTEGER;'))
+
         if "Mes" in cols.get('exposicao', []):
             try:
                 conn.execute(text('ALTER TABLE exposicao ALTER COLUMN "Mes" DROP NOT NULL;'))
@@ -172,15 +172,6 @@ def ensure_google_columns():
         if "Exposicoes_Ids" not in cols.get('imagem', []):
             conn.execute(text('ALTER TABLE imagem ADD COLUMN IF NOT EXISTS "Exposicoes_Ids" VARCHAR(300);'))
 
-
-    try:
-        with db.engine.begin() as conn:
-            conn.execute(text('''
-                ALTER TABLE comentario
-                ADD CONSTRAINT IF NOT EXISTS comentario_parent_fk FOREIGN KEY ("ID_Comentario_Pai") REFERENCES comentario("ID_Comentario");
-            '''))
-    except Exception:
-        pass
 
 
 

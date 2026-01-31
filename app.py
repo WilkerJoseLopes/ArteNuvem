@@ -1234,7 +1234,6 @@ def ver_base_dados():
                 "texto": c.texto, 
                 "img_id": c.id_imagem, 
                 "user_id": c.id_utilizador, 
-                "pai_id": c.id_comentario_pai,
                 "data": c.data
             } 
             for c in Comentario.query.order_by(Comentario.id).all()
@@ -1505,6 +1504,7 @@ def api_testar():
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

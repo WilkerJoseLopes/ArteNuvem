@@ -1183,7 +1183,7 @@ def ver_base_dados():
     dados = {}
 
     try:
-        # 1. Utilizadores
+        # 1. Utilizadores (Inclui foto_url)
         dados["utilizadores"] = [
             {
                 "id": u.id, 
@@ -1199,7 +1199,7 @@ def ver_base_dados():
         # 2. Categorias
         dados["categorias"] = [{"id": c.id, "nome": c.nome} for c in Categoria.query.order_by(Categoria.id).all()]
         
-        # 3. Exposições
+        # 3. Exposições (Inclui imagem_destaque)
         expos = []
         for e in Exposicao.query.order_by(Exposicao.id).all():
             expos.append({
@@ -1219,10 +1219,10 @@ def ver_base_dados():
             })
         dados["exposicoes"] = expos
 
-        # 4. Imagens
+        # 4. Imagens (Inclui caminho_armazenamento)
         imgs = []
         for i in Imagem.query.order_by(Imagem.id).all():
-            ids_expos = [e.id for e in i.exposicoes] # Relação N:M
+            ids_expos = [e.id for e in i.exposicoes] 
             imgs.append({
                 "id": i.id, 
                 "titulo": i.titulo, 
@@ -1278,20 +1278,23 @@ def ver_base_dados():
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; font-size: 13px; margin: 0; }
             h1 { color: #333; text-align: center; margin-bottom: 20px; }
+            
+            /* Estilo dos Títulos das Tabelas */
             h2 { 
                 border-left: 5px solid #007bff; 
                 padding-left: 10px; 
                 margin-top: 40px; 
-                color: #444; 
+                color: #2c3e50; 
                 background: #e9ecef; 
                 padding: 10px; 
+                border-radius: 0 5px 5px 0;
             }
             
-            /* O segredo para tabelas largas e responsivas */
+            /* Container Responsivo para não esmagar as colunas */
             .table-responsive {
                 width: 100%;
-                overflow-x: auto; /* Scroll apenas se necessário */
-                margin-bottom: 10px;
+                overflow-x: auto; 
+                margin-bottom: 20px;
                 background: white;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                 border-radius: 5px;
@@ -1299,18 +1302,18 @@ def ver_base_dados():
 
             table { 
                 width: 100%; 
-                min-width: 800px; /* Garante que a tabela não encolhe demasiado */
                 border-collapse: collapse; 
+                min-width: 900px; /* Garante largura mínima para leitura */
             }
             
             th, td { 
-                padding: 12px 15px; /* Mais espaço interno */
+                padding: 12px 15px; 
                 border-bottom: 1px solid #ddd; 
                 text-align: left; 
-                white-space: nowrap; /* Impede que o texto quebre linha */
+                white-space: nowrap; /* Impede quebra de linha nas células */
             }
             
-            th { background-color: #2c3e50; color: white; position: sticky; top: 0; }
+            th { background-color: #343a40; color: white; position: sticky; top: 0; }
             tr:nth-child(even) { background-color: #f8f9fa; }
             tr:hover { background-color: #e2e6ea; }
             
@@ -1324,11 +1327,19 @@ def ver_base_dados():
                 margin: 0 10px; 
                 font-weight: bold;
             }
-            .btn:hover { opacity: 0.9; }
+            .btn:hover { background-color: #555; }
             .count { font-size: 0.8em; color: #666; font-weight: normal; margin-left: 10px; }
+            
             .true { color: green; font-weight: bold; }
             .false { color: red; font-weight: bold; }
-            .small-col { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+            
+            /* Coluna para URLs longos */
+            .url-col { 
+                max-width: 250px; 
+                overflow: hidden; 
+                text-overflow: ellipsis; 
+                color: #007bff;
+            }
         </style>
     </head>
     <body>
@@ -1338,10 +1349,18 @@ def ver_base_dados():
             <a href="?format=json" class="btn" style="background:#17a2b8;">Ver JSON Bruto</a>
         </div>
 
-        <h2>1. Utilizadores <span class="count">({{ dados.utilizadores|length }})</span></h2>
+        <h2>1. Utilizador <span class="count">({{ dados.utilizadores|length }})</span></h2>
         <div class="table-responsive">
             <table>
-                <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Google ID</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th>Google ID</th>
+                        <th>Foto Perfil (URL)</th> </tr>
+                </thead>
                 <tbody>
                     {% for u in dados.utilizadores %}
                     <tr>
@@ -1350,13 +1369,14 @@ def ver_base_dados():
                         <td>{{ u.email }}</td>
                         <td>{{ u.tipo }}</td>
                         <td>{{ u.google_id }}</td>
+                        <td class="url-col" title="{{ u.foto_url }}">{{ u.foto_url }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <h2>2. Categorias <span class="count">({{ dados.categorias|length }})</span></h2>
+        <h2>2. Categoria <span class="count">({{ dados.categorias|length }})</span></h2>
         <div class="table-responsive">
             <table>
                 <thead><tr><th>ID</th><th>Nome</th></tr></thead>
@@ -1368,13 +1388,14 @@ def ver_base_dados():
             </table>
         </div>
 
-        <h2>3. Exposições <span class="count">({{ dados.exposicoes|length }})</span></h2>
+        <h2>3. Exposição <span class="count">({{ dados.exposicoes|length }})</span></h2>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th><th>Nome</th><th>Ativo</th><th>Datas</th><th>Mês/Ano</th><th>Mes Int.</th>
-                        <th>Desc.</th><th>Img Destaque</th><th>Tags (Bool)</th><th>Filtro Tags</th>
+                        <th>ID</th><th>Nome</th><th>Ativo</th>
+                        <th>Imagem Destaque (URL)</th> <th>Datas</th><th>Mês/Ano</th><th>Mes Int.</th>
+                        <th>Desc.</th><th>Tags (Bool)</th><th>Filtro Tags</th>
                         <th>Cats (Bool)</th><th>Cat ID</th><th>Lista Cats</th>
                     </tr>
                 </thead>
@@ -1384,11 +1405,11 @@ def ver_base_dados():
                         <td>{{ e.id }}</td>
                         <td>{{ e.nome }}</td>
                         <td class="{{ 'true' if e.ativo else 'false' }}">{{ 'SIM' if e.ativo else 'NÃO' }}</td>
+                        <td class="url-col" title="{{ e.img_destaque }}">{{ e.img_destaque }}</td>
                         <td>{{ e.datas }}</td>
                         <td>{{ e.mes }}</td>
                         <td>{{ e.mes_inteiro }}</td>
-                        <td class="small-col" title="{{ e.descricao }}">{{ e.descricao }}</td>
-                        <td class="small-col">{{ e.img_destaque }}</td>
+                        <td class="url-col" title="{{ e.descricao }}">{{ e.descricao }}</td>
                         <td>{{ e.usar_tags }}</td>
                         <td>{{ e.tags_filtro }}</td>
                         <td>{{ e.usar_cats }}</td>
@@ -1400,13 +1421,14 @@ def ver_base_dados():
             </table>
         </div>
 
-        <h2>4. Imagens <span class="count">({{ dados.imagens|length }})</span></h2>
+        <h2>4. Imagem <span class="count">({{ dados.imagens|length }})</span></h2>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th><th>Título</th><th>Autor ID</th><th>Cat ID</th><th>Cat (Txt)</th>
-                        <th>Tags</th><th>Data</th><th>Exposições (N:M)</th><th>Caminho (Supabase)</th>
+                        <th>ID</th><th>Título</th>
+                        <th>Caminho (URL Supabase)</th> <th>Autor ID</th><th>Cat ID</th><th>Cat (Txt)</th>
+                        <th>Tags</th><th>Data</th><th>Exposições (N:M)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1414,13 +1436,13 @@ def ver_base_dados():
                     <tr>
                         <td>{{ i.id }}</td>
                         <td>{{ i.titulo }}</td>
+                        <td class="url-col" title="{{ i.caminho }}">{{ i.caminho }}</td>
                         <td>{{ i.autor_id }}</td>
                         <td>{{ i.cat_id }}</td>
                         <td>{{ i.cat_txt }}</td>
                         <td>{{ i.tags }}</td>
                         <td>{{ i.data }}</td>
                         <td>{{ i.exposicoes }}</td>
-                        <td class="small-col" title="{{ i.caminho }}">{{ i.caminho }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1441,10 +1463,10 @@ def ver_base_dados():
             </table>
         </div>
 
-        <h2>6. Comentários <span class="count">({{ dados.comentarios|length }})</span></h2>
+        <h2>6. Comentário <span class="count">({{ dados.comentarios|length }})</span></h2>
         <div class="table-responsive">
             <table>
-                <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Data</th></tr></thead>
+                <thead><tr><th>ID</th><th>Texto</th><th>Img ID</th><th>User ID</th><th>Pai ID</th><th>Data</th></tr></thead>
                 <tbody>
                     {% for c in dados.comentarios %}
                     <tr>
@@ -1452,6 +1474,7 @@ def ver_base_dados():
                         <td>{{ c.texto }}</td>
                         <td>{{ c.img_id }}</td>
                         <td>{{ c.user_id }}</td>
+                        <td>{{ c.pai_id }}</td>
                         <td>{{ c.data }}</td>
                     </tr>
                     {% endfor %}
@@ -1459,7 +1482,7 @@ def ver_base_dados():
             </table>
         </div>
 
-        <h2>7. Reações <span class="count">({{ dados.reacoes|length }})</span></h2>
+        <h2>7. Reação <span class="count">({{ dados.reacoes|length }})</span></h2>
         <div class="table-responsive">
             <table>
                 <thead><tr><th>ID</th><th>Tipo</th><th>Img ID</th><th>User ID</th></tr></thead>
@@ -1492,6 +1515,7 @@ def api_testar():
     
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 

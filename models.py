@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-# Tabela intermédia para a relação N:M entre Imagem e Exposição
 imagem_exposicao = db.Table(
     "imagem_exposicao",
     db.Column("ID_Imagem", db.Integer, db.ForeignKey("imagem.ID_Imagem"), primary_key=True),
@@ -45,11 +44,6 @@ class Imagem(db.Model):
     id_categoria = db.Column("ID_Categoria", db.Integer, db.ForeignKey("categoria.ID_Categoria"), nullable=True)
     tags = db.Column("Tags", db.String(300), nullable=True)
     
-    # Mantemos a coluna antiga APENAS para a migração, depois será removida da DB via script, 
-    # mas no modelo removemos a referência direta para forçar o uso da nova relação.
-    # exposicoes_ids = db.Column("Exposicoes_Ids", db.String(300), nullable=True) 
-
-    # Nova relação Many-to-Many
     exposicoes = db.relationship(
         "Exposicao",
         secondary=imagem_exposicao,
@@ -99,4 +93,3 @@ class Exposicao(db.Model):
     mes_inteiro = db.Column("Mes_Inteiro", db.Boolean, default=False)
     categoria_id = db.Column("Categoria_ID", db.Integer, db.ForeignKey("categoria.ID_Categoria"), nullable=True)
 
-# Classe Voto removida conforme solicitado

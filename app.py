@@ -119,60 +119,10 @@ def upload_imagem_supabase(file):
 
 
 
+
 def ensure_google_columns():
-    inspector = inspect(db.engine)
-    
-    if not inspector.has_table("utilizador"):
-        app.logger.info("ensure_google_columns: tabela 'utilizador' não existe ainda — skipping.")
-        return
-
-    cols = {}
-    try:
-        cols['imagem'] = [c['name'] for c in inspector.get_columns('imagem')]
-    except Exception:
-        cols['imagem'] = []
-    try:
-        cols['comentario'] = [c['name'] for c in inspector.get_columns('comentario')]
-    except Exception:
-        cols['comentario'] = []
-    try:
-        cols['utilizador'] = [c['name'] for c in inspector.get_columns('utilizador')]
-    except Exception:
-        cols['utilizador'] = []
-    try:
-        cols['exposicao'] = [c['name'] for c in inspector.get_columns('exposicao')]
-    except Exception:
-        cols['exposicao'] = []
-
-    with db.engine.begin() as conn:
-        if "Google_ID" not in cols.get('utilizador', []):
-            conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Google_ID" VARCHAR(200);'))
-        if "Foto_URL" not in cols.get('utilizador', []):
-            conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Foto_URL" VARCHAR(300);'))
-        if "Tipo_Utilizador" not in cols.get('utilizador', []):
-            conn.execute(text('ALTER TABLE utilizador ADD COLUMN IF NOT EXISTS "Tipo_Utilizador" VARCHAR(50);'))
-
-
-        if "Mes" in cols.get('exposicao', []):
-            try:
-                conn.execute(text('ALTER TABLE exposicao ALTER COLUMN "Mes" DROP NOT NULL;'))
-            except Exception:
-                pass
-        if "Descricao" not in cols.get('exposicao', []):
-            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Descricao" VARCHAR(500);'))
-        if "Start_Date" not in cols.get('exposicao', []):
-            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Start_Date" DATE;'))
-        if "End_Date" not in cols.get('exposicao', []):
-            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "End_Date" DATE;'))
-        if "Mes_Inteiro" not in cols.get('exposicao', []):
-            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Mes_Inteiro" BOOLEAN DEFAULT FALSE;'))
-        if "Categoria_ID" not in cols.get('exposicao', []):
-            conn.execute(text('ALTER TABLE exposicao ADD COLUMN IF NOT EXISTS "Categoria_ID" INTEGER;'))
-
-        if "Exposicoes_Ids" not in cols.get('imagem', []):
-            conn.execute(text('ALTER TABLE imagem ADD COLUMN IF NOT EXISTS "Exposicoes_Ids" VARCHAR(300);'))
-
-
+    app.logger.info("Schema gerido externamente no Supabase; migrações DDL no arranque desativadas.")
+    return
 
 
 with app.app_context():
@@ -226,6 +176,7 @@ def inject_user():
 
 
 
+
 @app.before_request
 def ensure_tables():
     if app.config.get("TABLES_INITIALIZED"):
@@ -234,18 +185,12 @@ def ensure_tables():
         if app.config.get("TABLES_INITIALIZED"):
             return
         with app.app_context():
-            # --- BLOCO DE LIMPEZA FORÇADA ---
-            try:
-                # Tenta apagar a tabela Voto explicitamente usando a sessão
-                db.session.execute(text("DROP TABLE IF EXISTS voto CASCADE"))
-                db.session.commit()
-                app.logger.info(">>> SUCESSO: Tabela 'voto' apagada no arranque da aplicação. <<<")
-            except Exception as e:
-                db.session.rollback()
-                app.logger.warning(f">>> AVISO: Não foi possível apagar a tabela voto (talvez já não exista): {e}")
-            # -------------------------------
+            inspector = inspect(db.engine)
+            if not inspector.has_table("categoria"):
+                app.logger.warning("Tabelas ainda não existem no Supabase. Executa o SQL de schema antes de usar a aplicação.")
+                app.config["TABLES_INITIALIZED"] = True
+                return
 
-            db.create_all()
             default = ["Todos", "Fotos", "Desenhos", "Outro"]
             for nome in default:
                 if not Categoria.query.filter_by(nome=nome).first():
@@ -255,6 +200,7 @@ def ensure_tables():
 
 
 @app.route("/")
+
 def index():
     q = request.args.get("q", "", type=str).strip()
     categoria_id = request.args.get("categoria", type=int)
@@ -1504,20 +1450,3 @@ def api_testar():
     
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

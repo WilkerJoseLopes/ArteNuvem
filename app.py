@@ -105,9 +105,61 @@ def internal_error(e):
         return make_response("Internal Server Error", 500)
 
 
+
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "imagens")
+
+def ensure_supabase_bucket(bucket_name: str = SUPABASE_BUCKET) -> None:
+    if not supabase_service:
+        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY não definido no ambiente.")
+
+    try:
+        buckets = supabase_service.storage.list_buckets()
+        for b in buckets or []:
+            b_name = b.get("name") if isinstance(b, dict) else getattr(b, "name", None)
+            b_id = b.get("id") if isinstance(b, dict) else getattr(b, "id", None)
+            if bucket_name in {b_name, b_id}:
+                return
+    except Exception:
+        pass
+
+    create_bucket = getattr(supabase_service.storage, "create_bucket", None)
+    if callable(create_bucket):
+        try:
+            create_bucket(bucket_name, {"public": True})
+            app.logger.info("Bucket Supabase '%s' criado automaticamente.", bucket_name)
+            return
+        except TypeError:
+            try:
+                create_bucket(bucket_name, options={"public": True})
+                app.logger.info("Bucket Supabase '%s' criado automaticamente.", bucket_name)
+                return
+            except Exception as e:
+                app.logger.warning("Falha ao criar bucket via SDK: %s", e)
+        except Exception as e:
+            app.logger.warning("Falha ao criar bucket via SDK: %s", e)
+
+    try:
+        import requests
+        headers = {
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Content-Type": "application/json",
+        }
+        payload = {"id": bucket_name, "name": bucket_name, "public": True}
+        resp = requests.post(f"{SUPABASE_URL}/storage/v1/bucket", json=payload, headers=headers, timeout=20)
+        if resp.status_code in (200, 201, 409):
+            app.logger.info("Bucket Supabase '%s' confirmado/criado via REST.", bucket_name)
+            return
+        resp.raise_for_status()
+    except Exception as e:
+        raise RuntimeError(f"Bucket '{bucket_name}' não encontrado e não foi possível criá-lo: {e}")
+
+
 def upload_imagem_supabase(file):
     if not supabase_service:
         raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY não definido no ambiente.")
+
+    ensure_supabase_bucket(SUPABASE_BUCKET)
 
     ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "bin"
     nome_unico = f"{uuid.uuid4()}.{ext}"
@@ -115,23 +167,21 @@ def upload_imagem_supabase(file):
 
     try:
         file.stream.seek(0)
-        supabase_service.storage.from_("imagens").upload(
+        supabase_service.storage.from_(SUPABASE_BUCKET).upload(
             nome_unico,
             file.stream.read(),
             {"content-type": content_type}
         )
     except Exception as e:
         app.logger.exception("Erro no upload para Supabase Storage: %s", e)
-        raise RuntimeError(f"Falha ao enviar imagem para o bucket 'imagens': {e}")
+        raise RuntimeError(f"Falha ao enviar imagem para o bucket '{SUPABASE_BUCKET}': {e}")
 
     public_url = (
-        supabase.storage.from_("imagens").get_public_url(nome_unico)
+        supabase.storage.from_(SUPABASE_BUCKET).get_public_url(nome_unico)
         if supabase else
-        f"{SUPABASE_URL}/storage/v1/object/public/imagens/{nome_unico}"
+        f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{nome_unico}"
     )
     return public_url, nome_unico
-
-
 
 
 def ensure_google_columns():
@@ -1159,7 +1209,6 @@ def ver_base_dados():
                 "id": u.id, 
                 "nome": u.nome, 
                 "email": u.email, 
-                "tipo": u.tipo_utilizador, 
                 "google_id": u.google_id,
                 "foto_url": u.foto_url
             } 

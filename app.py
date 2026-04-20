@@ -107,14 +107,28 @@ def internal_error(e):
 
 def upload_imagem_supabase(file):
     if not supabase_service:
-        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY não definido no ambiente — define SUPABASE_SERVICE_ROLE_KEY no Render.")
+        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY não definido no ambiente.")
 
     ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "bin"
     nome_unico = f"{uuid.uuid4()}.{ext}"
     content_type = mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
-    file.stream.seek(0)
-    res = supabase_service.storage.from_("imagens").upload(nome_unico, file.stream.read(), {"content-type": content_type})
-    public_url = supabase.storage.from_("imagens").get_public_url(nome_unico) if supabase else f"{SUPABASE_URL}/storage/v1/object/public/imagens/{nome_unico}"
+
+    try:
+        file.stream.seek(0)
+        supabase_service.storage.from_("imagens").upload(
+            nome_unico,
+            file.stream.read(),
+            {"content-type": content_type}
+        )
+    except Exception as e:
+        app.logger.exception("Erro no upload para Supabase Storage: %s", e)
+        raise RuntimeError(f"Falha ao enviar imagem para o bucket 'imagens': {e}")
+
+    public_url = (
+        supabase.storage.from_("imagens").get_public_url(nome_unico)
+        if supabase else
+        f"{SUPABASE_URL}/storage/v1/object/public/imagens/{nome_unico}"
+    )
     return public_url, nome_unico
 
 
@@ -366,62 +380,81 @@ def publicar():
         categoria_id = request.form.get("categoria", type=int)
         tags = request.form.get("tags", "")
 
+        # ---------------- VALIDAÇÕES ----------------
         if not ficheiro or ficheiro.filename == "":
             flash("Selecione um ficheiro.", "error")
             return redirect(request.url)
+
         if not allowed_file(ficheiro.filename):
             flash("Apenas ficheiros JPG/PNG.", "error")
             return redirect(request.url)
+
         if not titulo:
             flash("Título é obrigatório.", "error")
             return redirect(request.url)
 
-        # Upload para Supabase
-        caminho_url, object_key = upload_imagem_supabase(ficheiro)
+        # ---------------- UPLOAD (SEGURANÇA ADICIONADA) ----------------
+        try:
+            caminho_url, object_key = upload_imagem_supabase(ficheiro)
+        except Exception as e:
+            app.logger.exception("Erro no upload Supabase: %s", e)
+            flash("Erro ao enviar imagem. Verifica o bucket ou keys do Supabase.", "error")
+            return redirect(request.url)
 
-        categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
+        # ---------------- CRIAR IMAGEM ----------------
+        try:
+            categoria_obj = Categoria.query.get(categoria_id) if categoria_id else None
 
-        img = Imagem(
-            titulo=titulo,
-            caminho_armazenamento=caminho_url,
-            categoria_texto=categoria_obj.nome if categoria_obj else None,
-            id_utilizador=user.id,
-            id_categoria=categoria_id if categoria_id else None,
-        )
+            img = Imagem(
+                titulo=titulo,
+                caminho_armazenamento=caminho_url,
+                categoria_texto=categoria_obj.nome if categoria_obj else None,
+                id_utilizador=user.id,
+                id_categoria=categoria_id if categoria_id else None,
+            )
 
-        if tags:
-            img.tags = tags
+            if tags:
+                img.tags = tags
 
-        # --- ALTERAÇÃO AQUI: Lógica Many-to-Many ---
-        selected = request.form.getlist("exposicoes")
-        if selected:
+            # Many-to-Many exposições
+            selected = request.form.getlist("exposicoes")
             for eid in selected:
-                if eid:
+                try:
                     exp_obj = Exposicao.query.get(int(eid))
                     if exp_obj:
                         img.exposicoes.append(exp_obj)
-        # -------------------------------------------
+                except Exception:
+                    continue
 
-        db.session.add(img)
-        db.session.commit()
+            db.session.add(img)
+            db.session.commit()
+
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception("Erro ao guardar imagem na DB: %s", e)
+            flash("Erro ao guardar imagem na base de dados.", "error")
+            return redirect(request.url)
+
         flash("Publicado com sucesso!", "success")
         return redirect(url_for("index"))
 
-    # GET request
+    # ---------------- GET ----------------
     categorias = Categoria.query.all()
     hoje = date.today()
+
     exposicoes_all = Exposicao.query.filter_by(ativo=True).all()
     exposicoes_disponiveis = []
 
     for e in exposicoes_all:
         valido = False
+
         if e.mes_inteiro and e.mes:
             try:
                 m, y = map(int, e.mes.split("/"))
                 if m == hoje.month and y == hoje.year:
                     valido = True
             except Exception:
-                valido = False
+                pass
         else:
             if e.start_date and e.end_date and e.start_date <= hoje <= e.end_date:
                 valido = True

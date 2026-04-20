@@ -18,7 +18,6 @@ class Utilizador(db.Model):
     nome = db.Column("Nome", db.String(150), nullable=False)
     email = db.Column("Email", db.String(150), unique=True, nullable=False)
     foto_url = db.Column("Foto_URL", db.String(300), nullable=True)
-    tipo_utilizador = db.Column("Tipo_Utilizador", db.String(50), default="Aluno")
 
     imagens = db.relationship("Imagem", backref="autor", lazy=True)
 

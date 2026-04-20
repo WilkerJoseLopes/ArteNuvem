@@ -105,8 +105,7 @@ def internal_error(e):
         return make_response("Internal Server Error", 500)
 
 
-
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "imagens")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "ImagePOST")
 
 def ensure_supabase_bucket(bucket_name: str = SUPABASE_BUCKET) -> None:
     if not supabase_service:

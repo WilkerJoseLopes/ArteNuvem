@@ -224,10 +224,13 @@ google = oauth.register(
     name="google",
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-    client_kwargs={"scope": "openid email profile"},
+    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
+    access_token_url="https://oauth2.googleapis.com/token",
+    api_base_url="https://www.googleapis.com/oauth2/v3/",
+    client_kwargs={
+        "scope": "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+    },
 )
-google._user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -2309,19 +2312,16 @@ def login():
 
 @app.route("/login/google/callback")
 def google_callback():
-    token = google.authorize_access_token()
-    user_info = {}
     try:
+        google.authorize_access_token()
         resp = google.get("userinfo")
-        if resp and resp.ok:
-            user_info = resp.json()
-    except Exception:
-        user_info = {}
-    if not user_info:
-        try:
-            user_info = google.parse_id_token(token)
-        except Exception:
-            user_info = token.get("userinfo") or token.get("id_token") or {}
+        resp.raise_for_status()
+        user_info = resp.json()
+    except Exception as e:
+        app.logger.exception("Erro no login com Google: %s", e)
+        flash("Erro ao iniciar sessao com o Google. Tenta de novo.", "error")
+        return redirect(url_for("index"))
+
     email = user_info.get("email")
     if not email:
         flash("Erro ao obter email do Google. Tenta de novo.", "error")
@@ -2350,6 +2350,11 @@ def google_callback():
             email_ativo=True
         )
         db.session.add(prefs)
+        db.session.commit()
+    else:
+        user.google_id = user.google_id or google_id
+        user.nome = user.nome or nome
+        user.foto_url = user.foto_url or foto
         db.session.commit()
 
     # Enviar email de boas-vindas se for o primeiro login

@@ -1444,9 +1444,7 @@ def exportar_exposicao():
                 
                 q = Imagem.query
                 
-                # --- ALTERAÇÃO: Filtro Many-to-Many ---
                 manual_cond = Imagem.exposicoes.any(Exposicao.id == exposicao_selecionada.id)
-                # --------------------------------------
 
                 cond_intervalo = True
                 if exposicao_selecionada.start_date and exposicao_selecionada.end_date:

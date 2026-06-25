@@ -1,45 +1,128 @@
 {% extends "base.html" %}
-{% block content %}
-<div style="display:flex;gap:1.2rem;align-items:center;margin-bottom:1rem;">
-    <img src="{{ user.foto_url or url_for('static', filename='imgICO/icone.png') }}" alt="avatar" class="user-avatar" style="width:88px;height:88px;">
-    <div>
-        <h1 style="margin:0">{{ user.nome }}</h1>
-        {% if user.tipo_utilizador %}
-            <div class="small">Tipo: {{ user.tipo_utilizador }}</div>
-        {% endif %}
-        {% if user.Descricao %}
-            <p style="margin-top:0.4rem">{{ user.Descricao }}</p>
-        {% endif %}
-        {% if current_user and current_user.id == user.id %}
-            <a href="{{ url_for('editar_perfil') }}"><button>Editar perfil</button></a>
-        {% endif %}
-    </div>
-</div>
+{% block title %}Perfil de {{ user.nome }} — ArteNuvem{% endblock %}
 
-<section>
-    <h2>Imagens de {{ user.nome }}</h2>
-    <div class="grid">
-        {% for img in imagens %}
-        <div class="card">
-            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-                <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}">
-            </a>
-            <div class="card-body">
-                <h3>{{ img.titulo }}</h3>
-                <p>ID: {{ img.id }}</p>
-                {% if img.categoria_texto %}
-                    <span class="badge">{{ img.categoria_texto }}</span>
-                {% endif %}
-                {% if current_user and (current_user.id == img.id_utilizador or current_user.email == ADMIN_EMAIL) %}
-                <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Apagar esta imagem?');">
-                    <button type="submit">Apagar</button>
-                </form>
+{% block content %}
+<div class="space-y-8">
+
+    <!-- PROFILE BANNER & HERO -->
+    <div class="relative rounded-3xl overflow-hidden border border-white/10 dark:border-white/5 shadow-xl bg-brand-card">
+        <!-- Banner Background -->
+        <div class="h-40 md:h-52 w-full bg-gradient-to-r from-brand-accent via-purple-600 to-brand-secondary relative">
+            <div class="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+            <div class="absolute -right-16 -top-16 w-60 h-60 rounded-full bg-white/10 blur-3xl"></div>
+        </div>
+        
+        <!-- Profile details overlay -->
+        <div class="p-6 md:p-8 pt-0 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 -mt-12 md:-mt-16 relative z-10">
+            <div class="flex flex-col sm:flex-row items-start sm:items-end gap-4 md:gap-5">
+                <img src="{{ user.foto_url or url_for('static', filename='imgICO/icone.png') }}" 
+                     alt="avatar" 
+                     class="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-brand-card bg-brand-card shadow-2xl relative">
+                
+                <div class="space-y-1 mb-2">
+                    <h1 class="text-xl md:text-3xl font-black tracking-tight text-white font-outfit">{{ user.nome }}</h1>
+                    <p class="text-xs text-muted font-medium font-inter">{{ user.email }}</p>
+                </div>
+            </div>
+            
+            <div class="mb-2 flex-shrink-0">
+                {% if current_user and current_user.id == user.id %}
+                    <a href="{{ url_for('editar_perfil') }}" class="flex items-center gap-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-brand-text font-bold text-xs px-4 py-2.5 rounded-full transition-all">
+                        <i data-lucide="edit" class="w-3.5 h-3.5"></i>
+                        <span>Editar perfil</span>
+                    </a>
                 {% endif %}
             </div>
         </div>
-        {% else %}
-        <p>Nenhuma imagem publicada por este utilizador.</p>
-        {% endfor %}
+
+        <!-- Mini Stats Bar inside profile -->
+        <div class="grid grid-cols-2 border-t border-white/5 divide-x divide-white/5 text-center">
+            <div class="py-4">
+                <span class="block text-[10px] font-extrabold uppercase tracking-wider text-muted">Publicações</span>
+                <span class="block text-lg font-black text-white mt-0.5">{{ imagens|length }}</span>
+            </div>
+            <div class="py-4">
+                <span class="block text-[10px] font-extrabold uppercase tracking-wider text-muted">Total de Gostos</span>
+                <span class="block text-lg font-black text-white mt-0.5">{{ total_likes }}</span>
+            </div>
+        </div>
     </div>
-</section>
+
+    <!-- GALLERY SECTION -->
+    <section class="space-y-6">
+        <div class="flex items-center gap-2 border-b border-white/5 pb-3">
+            <i data-lucide="image" class="w-5 h-5 text-brand-accent"></i>
+            <h2 class="text-lg font-extrabold text-white tracking-tight">Obras Criadas</h2>
+        </div>
+
+        <div class="masonry-grid" x-data="{ loading: true }" x-init="setTimeout(() => loading = false, 400)">
+            <!-- Skeletons -->
+            <template x-if="loading">
+                <div class="contents">
+                    {% for i in range(4) %}
+                    <div class="masonry-item">
+                        <div class="cinematic-card h-[260px] skeleton rounded-2xl"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </template>
+
+            <!-- Grelha Masonry de Imagens do Artista -->
+            <template x-if="!loading">
+                <div class="contents">
+                    {% for img in imagens %}
+                    <div class="masonry-item">
+                        <div class="cinematic-card group relative">
+                            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}" class="block">
+                                <div class="cinematic-img-container">
+                                    <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" class="cinematic-img w-full rounded-2xl object-cover" loading="lazy">
+                                    
+                                    <!-- Cinematic overlay -->
+                                    <div class="cinematic-overlay rounded-2xl">
+                                        <div class="flex flex-wrap gap-1 mb-1.5">
+                                            {% if img.categoria_texto %}
+                                                <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-brand-accent/20 border border-brand-accent/30 text-brand-secondary">
+                                                    {{ img.categoria_texto }}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <h3 class="text-xs font-bold text-white tracking-wide truncate mb-2">{{ img.titulo }}</h3>
+                                        
+                                        <div class="flex items-center justify-between border-t border-white/10 pt-2.5">
+                                            <span class="text-[10px] text-gray-300 font-semibold truncate max-w-[120px]">
+                                                ID: {{ img.id }}
+                                            </span>
+                                            
+                                            {% if img.localizacao %}
+                                            <span class="flex items-center gap-0.5 text-[9px] text-gray-300 font-medium">
+                                                <i data-lucide="map-pin" class="w-3 h-3 text-brand-secondary"></i>
+                                                <span class="truncate max-w-[80px]">{{ img.localizacao.city or img.localizacao.address.split(',')[0] }}</span>
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                            
+                            <!-- Delete action overlay visible to admins/owner outside anchor click -->
+                            {% if current_user and (current_user.id == img.id_utilizador or current_user.email|lower in ADMIN_EMAILS) %}
+                            <div class="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <form method="post" action="{{ url_for('apagar_imagem', imagem_id=img.id) }}" onsubmit="return confirm('Deseja apagar esta imagem de forma permanente?');" class="m-0">
+                                    <button type="submit" class="w-8 h-8 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white flex items-center justify-center border-0 shadow-lg cursor-pointer transition-colors" title="Apagar Obra">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-span-full py-16 text-center text-muted">Nenhuma imagem publicada por este artista ainda.</div>
+                    {% endfor %}
+                </div>
+            </template>
+        </div>
+    </section>
+
+</div>
 {% endblock %}

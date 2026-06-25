@@ -1,0 +1,39 @@
+{% extends "emails/base_email.html" %}
+
+{% block subject %}ArteNuvem - Recomendações de Arte para Si{% endblock %}
+
+{% block content %}
+<h2>Recomendações Personalizadas ✨</h2>
+<p>Olá, {{ user.nome }}. Com base nas suas interações e gostos no ArteNuvem, selecionámos algumas obras de arte que achamos que vai adorar:</p>
+
+<div style="margin-top: 30px; margin-bottom: 30px;">
+    {% for image in images %}
+    <div style="background-color: #1c1c24; border-radius: 8px; overflow: hidden; margin-bottom: 20px; border: 1px solid #2d2d3a; display: flex; flex-direction: column;">
+        {% if image.caminho_armazenamento %}
+        <div style="text-align: center; background-color: #121216; padding: 10px;">
+            <img src="{{ image.caminho_armazenamento }}" alt="{{ image.titulo }}" style="max-width: 100%; max-height: 250px; border-radius: 4px; object-fit: contain;">
+        </div>
+        {% endif %}
+        <div style="padding: 15px;">
+            <h3 style="margin-bottom: 5px; font-size: 18px; color: #ffffff;">{{ image.titulo }}</h3>
+            <p style="margin-bottom: 8px; font-size: 13px; color: #a5a5b4;">
+                Por <strong>{{ image.autor.nome }}</strong> na categoria <em>{{ image.categoria_texto or 'Sem categoria' }}</em>
+            </p>
+            {% if reasons and reasons[image.id] %}
+            <span style="display: inline-block; background-color: #3b82f633; color: #60a5fa; font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: 500;">
+                💡 {{ reasons[image.id] }}
+            </span>
+            {% endif %}
+            <div style="margin-top: 15px; text-align: right;">
+                <a href="{{ site_url }}imagem/{{ image.id }}" style="background-color: #23232f; color: #ffffff; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid #3b82f6; display: inline-block;">Ver Obra</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<p>Pode gerir ou desativar o envio destas recomendações a qualquer momento na sua página de definições de email.</p>
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{{ site_url }}recommendations" class="btn">Ver Mais Recomendações</a>
+</div>
+{% endblock %}

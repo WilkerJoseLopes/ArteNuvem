@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Recomendações Personalizadas — ArteNuvem{% endblock %}
+{% block content %}
+
+  <!-- Navigation Tabs -->
+  <div class="flex items-center gap-1 border-b border-white/10 pb-0.5 mb-6">
+    <a href="{{ url_for('index') }}" class="px-5 py-3 text-xs uppercase font-extrabold tracking-wider transition-all border-b-2 border-transparent text-muted hover:text-brand-text flex items-center gap-2">
+      <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+      <span>Feed Principal</span>
+    </a>
+    <a href="{{ url_for('recommendations_page') }}" class="px-5 py-3 text-xs uppercase font-extrabold tracking-wider transition-all border-b-2 border-brand-accent text-white flex items-center gap-2">
+      <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+      <span>Recomendações</span>
+    </a>
+  </div>
+
+<!-- Decorative background blobs -->
+<div class="relative min-h-[75vh]">
+  <div class="absolute -top-45 -left-45 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute top-80 -right-45 w-96 h-96 bg-brand-secondary/5 rounded-full blur-3xl pointer-events-none"></div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+    
+    <!-- Left Column: Recommended Images Grid (3 cols wide on large) -->
+    <div class="lg:col-span-3 space-y-6">
+      <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <i data-lucide="heart" class="w-5 h-5 text-rose-500"></i> Imagens Sugeridas
+      </h2>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {% for img in recommendations.images %}
+          <article class="glass-panel rounded-2xl overflow-hidden border border-white/10 dark:border-white/5 hover:border-white/20 transition-all duration-300 hover:shadow-xl hover:shadow-black/20 group flex flex-col justify-between">
+            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}" class="relative block overflow-hidden bg-black/25 aspect-square">
+              <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                <span class="text-[9px] uppercase font-extrabold tracking-widest text-brand-secondary">Ver Detalhes</span>
+              </div>
+            </a>
+            
+            <div class="p-4 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 class="font-bold text-sm text-brand-text truncate leading-snug group-hover:text-brand-secondary transition-colors">{{ img.titulo }}</h3>
+                {% if img.categoria_texto %}
+                  <span class="inline-block text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 bg-brand-secondary/10 border border-brand-secondary/15 rounded-md text-brand-secondary mt-1.5">
+                    {{ img.categoria_texto }}
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+          </article>
+        {% else %}
+          <!-- Empty State for new users with no interactions -->
+          <div class="col-span-full glass-panel p-12 rounded-2xl border border-white/10 dark:border-white/5 flex flex-col items-center justify-center text-center shadow-lg">
+            <div class="w-16 h-16 rounded-full bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center text-brand-accent mb-4">
+              <i data-lucide="heart-handshake" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-bold text-brand-text">Alimente as suas Sugestões!</h3>
+            <p class="text-sm text-muted mt-2 max-w-md">
+              Goste, comente ou submeta as suas criações favoritas na galeria. O recomendador inteligente irá analisar as suas interações para mapear o seu perfil artístico.
+            </p>
+            <a class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-accent hover:bg-brand-accentHover text-white text-xs font-extrabold tracking-wide transition-all shadow-lg shadow-brand-accent/25 hover:-translate-y-0.5" href="{{ url_for('index') }}">
+              <i data-lucide="gallery-thumbnails" class="w-4 h-4"></i>
+              <span>Explorar Galeria de Arte</span>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <!-- Right Column: Utilizadores sugeridos sidebar (1 col wide on large) -->
+    <aside class="lg:col-span-1 space-y-6">
+      <div class="glass-panel p-6 rounded-2xl border border-white/10 dark:border-white/5 flex flex-col shadow-lg">
+        <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-wider">
+          <i data-lucide="users" class="w-4 h-4 text-brand-secondary"></i> Utilizadores sugeridos
+        </h2>
+        
+        <div class="space-y-3">
+          {% for score, author, total in recommendations.authors %}
+            <div class="flex items-center justify-between gap-3 p-2 hover:bg-white/5 rounded-xl transition-all duration-300">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <img src="{{ author.foto_url if author and author.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="w-8 h-8 rounded-full object-cover border border-white/10 flex-shrink-0">
+                <div class="min-w-0">
+                  <a href="{{ url_for('perfil', imagem_id=author.id) }}" class="block text-xs font-bold text-white hover:text-brand-secondary transition-colors truncate">
+                    {{ author.nome }}
+                  </a>
+                  <span class="text-[9px] text-muted">{{ total }} obras publicadas</span>
+                </div>
+              </div>
+              <a href="{{ url_for('perfil', imagem_id=author.id) }}" class="text-[10px] font-extrabold text-brand-accent hover:underline flex items-center gap-0.5 whitespace-nowrap">
+                Ver
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          {% else %}
+            <p class="text-xs text-muted leading-relaxed">Sem utilizadores recomendados de momento.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+    
+  </div>
+
+</div>
+
+{% endblock %}

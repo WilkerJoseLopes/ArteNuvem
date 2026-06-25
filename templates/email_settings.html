@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Definições — ArteNuvem{% endblock %}
+{% block content %}
+
+<!-- Decorative background blobs -->
+<div class="relative min-h-[75vh]" 
+     x-data="{ 
+         currentTheme: localStorage.getItem('theme') || 'dark',
+         changeTheme(t) {
+             this.currentTheme = t;
+             setTheme(t);
+         }
+     }"
+     @theme-changed.window="currentTheme = $event.detail">
+     
+  <div class="absolute -top-40 -left-40 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute top-60 -right-40 w-96 h-96 bg-brand-secondary/5 rounded-full blur-3xl pointer-events-none"></div>
+
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4 mb-8">
+    <div>
+      <span class="text-[10px] font-extrabold uppercase tracking-widest text-brand-accent flex items-center gap-1">
+        <i data-lucide="sliders" class="w-3.5 h-3.5"></i> Definições do Utilizador
+      </span>
+      <h1 class="text-3xl font-black tracking-tight text-white mt-1">Definições</h1>
+      <p class="text-sm text-muted mt-1">Personalize a sua experiência visual de navegação e as notificações enviadas para a sua caixa de correio.</p>
+    </div>
+    <a class="inline-flex items-center gap-2 px-4 py-2 border border-white/10 dark:border-white/5 rounded-xl bg-white/5 hover:bg-white/10 text-brand-text text-sm transition-all duration-300 font-semibold shadow-sm" href="{{ url_for('index') }}">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      <span>Voltar ao Início</span>
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- COLUNA ESQUERDA: APARÊNCIA & TEMA (5/12) -->
+    <div class="lg:col-span-5 space-y-6">
+      <div class="glass-panel p-6 rounded-2xl border border-white/10 dark:border-white/5 space-y-6">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="palette" class="w-5 h-5 text-brand-secondary"></i> Aparência do Site
+          </h2>
+          <p class="text-xs text-muted mt-1">Escolha a cor de fundo que melhor se adapta à sua preferência de visualização.</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3">
+          
+          <!-- Tema Claro (Light) -->
+          <button type="button" @click="changeTheme('light')" 
+                  class="flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left w-full cursor-pointer bg-slate-50 border-slate-200 text-slate-800 hover:border-brand-accent/50 hover:shadow-md"
+                  :class="currentTheme === 'light' ? 'ring-2 ring-brand-accent border-brand-accent' : ''">
+            <div class="flex items-center gap-3">
+              <div class="w-4 h-4 rounded-full bg-white border border-slate-300 flex items-center justify-center">
+                <div class="w-2 h-2 rounded-full bg-slate-800" x-show="currentTheme === 'light'"></div>
+              </div>
+              <div>
+                <span class="block text-xs font-bold uppercase tracking-wider text-slate-800">Tema Claro (Claro)</span>
+                <span class="block text-[10px] text-slate-500 font-medium mt-0.5">Interface limpa e de alta claridade.</span>
+              </div>
+            </div>
+            <i data-lucide="sun" class="w-5 h-5 text-amber-500"></i>
+          </button>
+
+          <!-- Tema Cinza (Gray) -->
+          <button type="button" @click="changeTheme('gray')" 
+                  class="flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left w-full cursor-pointer bg-[#28292d] border-white/5 text-slate-200 hover:border-brand-accent/50 hover:shadow-md"
+                  :class="currentTheme === 'gray' ? 'ring-2 ring-brand-accent border-brand-accent' : ''">
+            <div class="flex items-center gap-3">
+              <div class="w-4 h-4 rounded-full bg-black/35 border border-white/10 flex items-center justify-center">
+                <div class="w-2 h-2 rounded-full bg-white" x-show="currentTheme === 'gray'"></div>
+              </div>
+              <div>
+                <span class="block text-xs font-bold uppercase tracking-wider text-slate-100">Tema Cinza (Cinza)</span>
+                <span class="block text-[10px] text-muted font-medium mt-0.5">Fundo cinzento suave e confortável.</span>
+              </div>
+            </div>
+            <i data-lucide="contrast" class="w-5 h-5 text-brand-secondary"></i>
+          </button>
+
+          <!-- Tema Preto (Dark) -->
+          <button type="button" @click="changeTheme('dark')" 
+                  class="flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left w-full cursor-pointer bg-[#0f0f10] border-white/10 text-slate-100 hover:border-brand-accent/50 hover:shadow-md"
+                  :class="currentTheme === 'dark' || currentTheme === 'black' ? 'ring-2 ring-brand-accent border-brand-accent' : ''">
+            <div class="flex items-center gap-3">
+              <div class="w-4 h-4 rounded-full bg-black/35 border border-white/10 flex items-center justify-center">
+                <div class="w-2 h-2 rounded-full bg-white" x-show="currentTheme === 'dark' || currentTheme === 'black'"></div>
+              </div>
+              <div>
+                <span class="block text-xs font-bold uppercase tracking-wider text-white">Tema Preto (Preto)</span>
+                <span class="block text-[10px] text-muted font-medium mt-0.5">Visual escuro profundo e imersivo.</span>
+              </div>
+            </div>
+            <i data-lucide="moon" class="w-5 h-5 text-brand-accent"></i>
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA: NOTIFICAÇÕES & PREFERÊNCIAS (7/12) -->
+    <div class="lg:col-span-7 space-y-6">
+      
+      <!-- Preferences Form Card -->
+      <div class="glass-panel p-6 rounded-2xl border border-white/10 dark:border-white/5">
+        <h2 class="text-base font-bold text-white flex items-center gap-2 mb-4 border-b border-white/5 pb-3">
+          <i data-lucide="mail" class="w-5 h-5 text-brand-secondary"></i> Notificações de Correio
+        </h2>
+        
+        <form class="space-y-6" method="post" action="{{ url_for('email_settings') }}">
+          
+          <div class="space-y-4 pl-1">
+            
+            <!-- Recommendations Email -->
+            <div class="flex items-center justify-between gap-4 py-4 border-b border-white/5">
+              <div class="pr-2">
+                <label class="block text-sm font-bold text-white cursor-pointer" for="email_recomendacoes">
+                  E-mail de Recomendações Semanais
+                </label>
+                <span class="block text-xs text-muted mt-1">Receba sugestões exclusivas de obras de arte com base no seu histórico e gostos.</span>
+              </div>
+              <input type="checkbox" id="email_recomendacoes" name="email_recomendacoes" value="1" 
+                     {% if prefs.email_recomendacoes %}checked{% endif %}
+                     class="w-5 h-5 rounded bg-white/5 border border-white/10 accent-brand-accent cursor-pointer flex-shrink-0">
+            </div>
+
+          </div>
+
+          <!-- Buttons footer -->
+          <div class="flex items-center gap-3 pt-4 border-t border-white/5">
+            <button type="submit" class="flex-1 bg-brand-accent hover:bg-brand-accentHover text-white font-bold text-xs py-3 rounded-xl shadow-lg shadow-brand-accent/25 hover:-translate-y-0.5 transition-all border-0 cursor-pointer">
+              Guardar Definições
+            </button>
+            <a href="{{ url_for('index') }}" class="px-5 py-3 border border-white/10 hover:bg-white/5 rounded-xl text-xs text-muted hover:text-white font-bold transition-colors text-center block">
+              Cancelar
+            </a>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

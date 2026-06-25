@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block subject %}{% endblock %}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b0b0d;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #e2e2e9;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wrapper {
+            width: 100%;
+            background-color: #0b0b0d;
+            padding: 40px 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #141418;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #23232a;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .header {
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid #23232a;
+            background: linear-gradient(135deg, #1b1b22 0%, #121217 100%);
+        }
+        .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 1px;
+            text-decoration: none;
+        }
+        .content {
+            padding: 40px 30px;
+            line-height: 1.6;
+        }
+        .footer {
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #23232a;
+            font-size: 12px;
+            color: #797986;
+            background-color: #0f0f12;
+        }
+        .footer a {
+            color: #a5a5b4;
+            text-decoration: underline;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #3b82f6;
+            color: #ffffff !important;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        h1, h2, h3 {
+            color: #ffffff;
+            margin-top: 0;
+        }
+        p {
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <a href="{{ site_url }}" class="logo-text">✨ ArteNuvem</a>
+            </div>
+            <div class="content">
+                {% block content %}{% endblock %}
+            </div>
+            <div class="footer">
+                <p>Recebeu este email porque está registado na plataforma ArteNuvem.</p>
+                <p>
+                    <a href="{{ site_url }}">Voltar ao Site</a> | 
+                    <a href="{{ site_url }}email-settings">Definições de Email</a>
+                </p>
+                <p>&copy; 2026 ArteNuvem. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

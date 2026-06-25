@@ -1,0 +1,20 @@
+{% extends "emails/base_email.html" %}
+
+{% block subject %}Bem-vindo à ArteNuvem!{% endblock %}
+
+{% block content %}
+<h2>Olá, {{ user.nome }}! 👋</h2>
+<p>Seja muito bem-vindo à <strong>ArteNuvem</strong>, o seu espaço digital para partilhar, descobrir e expor obras de arte únicas.</p>
+<p>Estamos muito entusiasmados por se ter juntado à nossa comunidade de artistas e apreciadores de arte.</p>
+<p>Com a sua nova conta, pode:</p>
+<ul style="padding-left: 20px; color: #a5a5b4; margin-bottom: 24px;">
+    <li style="margin-bottom: 8px;">Publicar as suas próprias imagens e desenhos.</li>
+    <li style="margin-bottom: 8px;">Participar em exposições virtuais temáticas mensais.</li>
+    <li style="margin-bottom: 8px;">Interagir com obras de outros utilizadores através de gostos e comentários.</li>
+    <li style="margin-bottom: 8px;">Obter recomendações personalizadas com base no seu perfil.</li>
+</ul>
+<p>Comece a explorar agora mesmo!</p>
+<div style="text-align: center;">
+    <a href="{{ site_url }}" class="btn">Explorar ArteNuvem</a>
+</div>
+{% endblock %}

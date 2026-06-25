@@ -1,0 +1,24 @@
+{% extends "emails/base_email.html" %}
+
+{% block subject %}Nova interação na ArteNuvem: {{ 'Gosto' if activity_type == 'like' else 'Comentário' }}{% endblock %}
+
+{% block content %}
+<h2>Nova Atividade na sua Obra 🔔</h2>
+<p>Olá, {{ user.nome }}.</p>
+<p>Há novidades sobre as suas publicações na plataforma:</p>
+
+<div style="background-color: #1c1c24; border-radius: 8px; padding: 20px; border: 1px solid #2d2d3a; margin-top: 25px; margin-bottom: 25px;">
+    <p style="margin: 0; font-size: 16px; color: #ffffff; font-weight: 500;">
+        {% if activity_type == 'like' %}❤️{% else %}💬{% endif %} {{ message }}
+    </p>
+    <p style="margin: 5px 0 0 0; font-size: 13px; color: #a5a5b4;">
+        Obra: <strong>{{ image_title }}</strong>
+    </p>
+</div>
+
+<p>Aceda à plataforma para ver quem interagiu consigo e participar na discussão!</p>
+
+<div style="text-align: center;">
+    <a href="{{ site_url }}" class="btn">Ir para a ArteNuvem</a>
+</div>
+{% endblock %}

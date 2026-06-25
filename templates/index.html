@@ -1,143 +1,332 @@
 {% extends "base.html" %}
-{% block title %}ArteNuvem{% endblock %}
+{% block title %}ArteNuvem — Galeria de Arte Digital{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="space-y-12">
 
-  {% if exposicao %}
-    <section class="exposicao-header">
-      <h1>{{ exposicao.nome }}</h1>
-      {% if exposicao.descricao %}
-        <p class="descricao">{{ exposicao.descricao }}</p>
-      {% endif %}
-      <p class="datas">
-        {% if exposicao.mes_inteiro and exposicao.mes %}
-          Período: {{ exposicao.mes }}
-        {% else %}
-          {% if exposicao.start_date %}{{ exposicao.start_date.strftime('%d %b %Y') }}{% endif %}
-          —
-          {% if exposicao.end_date %}{{ exposicao.end_date.strftime('%d %b %Y') }}{% endif %}
+  <!-- Navigation Tabs -->
+  <div class="flex items-center gap-1 border-b border-white/10 pb-0.5">
+    <a href="{{ url_for('index') }}" class="px-5 py-3 text-xs uppercase font-extrabold tracking-wider transition-all border-b-2 border-brand-accent text-white flex items-center gap-2">
+      <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+      <span>Feed Principal</span>
+    </a>
+    {% if current_user %}
+    <a href="{{ url_for('recommendations_page') }}" class="px-5 py-3 text-xs uppercase font-extrabold tracking-wider transition-all border-b-2 border-transparent text-muted hover:text-brand-text flex items-center gap-2">
+      <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+      <span>Recomendações</span>
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- HERO SECTION / ACTIVE EXPOSITION -->
+  {% if exposicao_ativa and not exposicao %}
+    <section class="relative rounded-3xl overflow-hidden border border-white/10 dark:border-white/5 shadow-2xl bg-gradient-to-r from-brand-card via-black/40 to-brand-bg/90 p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8 min-h-[300px]">
+      <!-- Background blur glow -->
+      <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-brand-accent/15 blur-[100px] pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-brand-secondary/10 blur-[100px] pointer-events-none"></div>
+      
+      <div class="relative z-10 max-w-2xl space-y-4">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-brand-accent/25 text-brand-secondary border border-brand-accent/30 animate-pulse">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Exposição Ativa
+          </span>
+        </div>
+        <h1 class="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight font-outfit">
+          {{ exposicao_ativa.nome }}
+        </h1>
+        {% if exposicao_ativa.descricao %}
+          <p class="text-sm md:text-base text-muted leading-relaxed font-inter font-light">
+            {{ exposicao_ativa.descricao }}
+          </p>
         {% endif %}
-      </p>
-      <hr>
-    </section>
-  {% elif is_search %}
-    <section class="resultados-header">
-      <h2>Resultados de "{{ query_text }}"</h2>
-      <hr>
-    </section>
-  {% elif is_categoria and categoria_obj %}
-    <section class="resultados-header">
-      <h2>Categoria: {{ categoria_obj.nome }}</h2>
-      <hr>
+      </div>
+      
+      <div class="relative z-10 flex flex-col items-center sm:items-end gap-3 flex-shrink-0">
+        {% if countdown_days is not none %}
+          <div class="glass-panel border border-white/10 px-5 py-3 rounded-2xl flex flex-col items-center sm:items-end">
+            <span class="text-[10px] font-bold text-muted uppercase tracking-wider">Tempo Restante</span>
+            <span class="text-2xl font-black text-white mt-0.5">{{ countdown_days }} Dias</span>
+          </div>
+        {% endif %}
+        <a class="flex items-center gap-2 bg-gradient-to-r from-brand-accent to-purple-600 hover:from-brand-accentHover hover:to-purple-700 text-white font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-brand-accent/20 transition-all transform hover:-translate-y-0.5" 
+           href="{{ url_for('exposicao') }}?exposicao_id={{ exposicao_ativa.id }}">
+          <span>Entrar na Galeria</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </div>
     </section>
   {% endif %}
 
-  {# Barra de ordenação — aparece sempre que existe um conjunto de imagens (pesquisa / categoria / catálogo) #}
-  <div class="actions-row" style="display:flex; justify-content:space-between; align-items:center; margin:0.6rem 0;">
+  <!-- EXPOSITION DETAIL HEADER -->
+  {% if exposicao %}
+    <section class="relative text-center max-w-3xl mx-auto space-y-4 py-6">
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-brand-accent/10 blur-[80px] pointer-events-none"></div>
+      
+      <div class="relative z-10 space-y-3">
+        <span class="text-[10px] font-bold text-brand-secondary tracking-widest uppercase">Exposição Virtual</span>
+        <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white leading-none font-outfit">{{ exposicao.nome }}</h1>
+        {% if exposicao.descricao %}
+          <p class="text-sm text-muted leading-relaxed font-inter font-light">{{ exposicao.descricao }}</p>
+        {% endif %}
+        <div class="inline-flex items-center gap-2 text-xs font-semibold text-muted bg-white/5 border border-white/10 px-4 py-1.5 rounded-full mt-2">
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-brand-accent"></i>
+          <span>
+            {% if exposicao.mes_inteiro and exposicao.mes %}
+              Período: {{ exposicao.mes }}
+            {% else %}
+              {% if exposicao.start_date %}{{ exposicao.start_date.strftime('%d %b %Y') }}{% endif %}
+              —
+              {% if exposicao.end_date %}{{ exposicao.end_date.strftime('%d %b %Y') }}{% endif %}
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </section>
+  {% elif is_search %}
+    <section class="relative py-4 border-b border-white/5">
+      <span class="text-[10px] font-bold text-brand-accent tracking-wider uppercase">Resultados da Pesquisa</span>
+      <h2 class="text-2xl font-black text-white mt-1">Obras encontradas para: "{{ query_text }}"</h2>
+    </section>
+  {% elif is_categoria and categoria_obj %}
+    <section class="relative py-4 border-b border-white/5">
+      <span class="text-[10px] font-bold text-brand-secondary tracking-wider uppercase">Categoria Filtrada</span>
+      <h2 class="text-2xl font-black text-white mt-1">{{ categoria_obj.nome }}</h2>
+    </section>
+  {% endif %}
+
+  <!-- FILTER & SORT ACTIONS -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-2 border-b border-white/5">
     <div>
       {% if imagens %}
-        <form id="sortForm" method="get" style="display:flex; gap:0.5rem; align-items:center;">
+        <form id="sortForm" method="get" class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 transition-all">
           <input type="hidden" name="q" value="{{ query_text }}">
           <input type="hidden" name="categoria" value="{{ selected_categoria }}">
           <input type="hidden" name="exposicao" value="{{ exposicao.id if exposicao }}">
-          <label for="ordenar">Ordenar:</label>
-          <select name="ordenar" id="ordenar" onchange="document.getElementById('sortForm').submit()" style="margin-left:0.4rem;">
-            <option value="mais_recentes" {% if ordenar=='mais_recentes' %}selected{% endif %}>Mais recentes</option>
-            <option value="mais_antigas" {% if ordenar=='mais_antigas' %}selected{% endif %}>Mais antigas</option>
-            <option value="mais_curtidas" {% if ordenar=='mais_curtidas' %}selected{% endif %}>Mais curtidas</option>
-            <option value="menos_curtidas" {% if ordenar=='menos_curtidas' %}selected{% endif %}>Menos curtidas</option>
+          <label for="ordenar" class="text-xs font-bold text-muted whitespace-nowrap">Ordenar por:</label>
+          <select name="ordenar" id="ordenar" onchange="document.getElementById('sortForm').submit()" class="bg-transparent text-xs font-bold text-brand-text border-0 focus:ring-0 cursor-pointer pr-8 py-0">
+            <option value="mais_recentes" {% if ordenar=='mais_recentes' %}selected{% endif %} class="bg-brand-card">Mais recentes</option>
+            <option value="mais_antigas" {% if ordenar=='mais_antigas' %}selected{% endif %} class="bg-brand-card">Mais antigas</option>
+            <option value="mais_curtidas" {% if ordenar=='mais_curtidas' %}selected{% endif %} class="bg-brand-card">Mais curtidas</option>
+            <option value="menos_curtidas" {% if ordenar=='menos_curtidas' %}selected{% endif %} class="bg-brand-card">Menos curtidas</option>
           </select>
         </form>
       {% endif %}
     </div>
-
-    <div>
-      {# Link rápido para ver catálogo completo quando não há pesquisa/categoria/exposição #}
-      {% if not is_search and not is_categoria and not exposicao %}
-      {% endif %}
-    </div>
   </div>
 
-  {# --- Se pesquisa ou categoria ou exposição: mostrar apenas o resultado filtrado --- #}
+  <!-- MAIN MASONRY FEED GRID -->
   {% if is_search or is_categoria or exposicao %}
-    <section class="section">
-      <div class="grid">
-        {% for img in imagens %}
-          <div class="card">
-            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-              <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
-            </a>
-            <div class="card-body">
-              <h3>{{ img.titulo }}</h3>
-              {% if img.categoria_texto %}
-                <span class="badge">{{ img.categoria_texto }}</span>
-              {% endif %}
+    <section class="space-y-6">
+      <div class="masonry-grid" x-data="{ loading: true }" x-init="setTimeout(() => loading = false, 500)">
+        
+        <!-- Skeleton Loaders -->
+        <template x-if="loading">
+            <div class="contents">
+                {% for i in range(6) %}
+                <div class="masonry-item">
+                    <div class="cinematic-card h-[320px] skeleton rounded-2xl"></div>
+                </div>
+                {% endfor %}
             </div>
-          </div>
-        {% else %}
-          <p>Nenhuma imagem encontrada.</p>
-        {% endfor %}
+        </template>
+
+        <!-- Dynamic Items -->
+        <template x-if="!loading">
+            <div class="contents">
+                {% for img in imagens %}
+                  <div class="masonry-item">
+                    <div class="cinematic-card group relative">
+                      <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}" class="block">
+                        <div class="cinematic-img-container">
+                          <!-- Image -->
+                          <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" class="cinematic-img w-full rounded-2xl object-cover" loading="lazy">
+                          
+                          <!-- Cinematic hover overlay -->
+                          <div class="cinematic-overlay rounded-2xl">
+                            <div class="flex flex-wrap gap-1 mb-2">
+                              {% if img.categoria_texto %}
+                                <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-brand-accent/20 border border-brand-accent/30 text-brand-secondary">
+                                  {{ img.categoria_texto }}
+                                </span>
+                              {% endif %}
+                            </div>
+                            <h3 class="text-sm font-bold text-white tracking-wide truncate mb-3 leading-tight">{{ img.titulo }}</h3>
+                            
+                            <!-- Card footer info -->
+                            <div class="flex items-center justify-between border-t border-white/10 pt-2.5">
+                              <div class="flex items-center gap-1.5 min-w-0">
+                                <img src="{{ img.autor.foto_url or url_for('static', filename='imgICO/icone.png') }}" class="w-5.5 h-5.5 rounded-full object-cover border border-white/20">
+                                <span class="text-xs font-semibold text-gray-200 truncate max-w-[110px]">{{ img.autor.nome.split(' ')[0] }}</span>
+                              </div>
+                              {% if img.localizacao %}
+                                <span class="flex items-center gap-0.5 text-[10px] text-gray-300 font-medium">
+                                  <i data-lucide="map-pin" class="w-3 h-3 text-brand-secondary"></i>
+                                  <span class="truncate max-w-[80px]">{{ img.localizacao.city or img.localizacao.address.split(',')[0] }}</span>
+                                </span>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="col-span-full py-16 text-center text-muted">Nenhuma obra de arte encontrada neste filtro.</div>
+                {% endfor %}
+            </div>
+        </template>
+
       </div>
     </section>
 
   {% else %}
-    {# --- PÁGINA NORMAL: Recomendações + Catálogo --- #}
-
-    <section class="section">
-      <h2>Recomendações</h2>
-      <div class="grid">
-        {% for img in recomendacoes %}
-          <div class="card">
-            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-              <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
-            </a>
-            <div class="card-body">
-              <h3>{{ img.titulo }}</h3>
-              {% if img.categoria_texto %}
-                <span class="badge">{{ img.categoria_texto }}</span>
-              {% endif %}
+    <!-- HOME PAGE MULTI-GRID: Destaques & Catálogo Completo -->
+    
+    <!-- SECTION 1: DESTAQUES RECENTES -->
+    <section class="space-y-6">
+      <div class="flex justify-between items-center border-b border-white/5 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-5 h-5 text-brand-accent"></i>
+          <h2 class="text-xl font-extrabold tracking-tight text-white">
+            Destaques Recentes
+          </h2>
+        </div>
+        {% if current_user %}
+          <a class="flex items-center gap-1 text-xs font-bold text-brand-accent hover:text-brand-secondary transition-colors" href="{{ url_for('recommendations_page') }}">
+            <span>Ver tudo</span>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </a>
+        {% endif %}
+      </div>
+      
+      <div class="masonry-grid" x-data="{ loading: true }" x-init="setTimeout(() => loading = false, 400)">
+        
+        <!-- Skeleton loaders -->
+        <template x-if="loading">
+            <div class="contents">
+                {% for i in range(4) %}
+                <div class="masonry-item">
+                    <div class="cinematic-card h-[280px] skeleton rounded-2xl"></div>
+                </div>
+                {% endfor %}
             </div>
-          </div>
-        {% else %}
-          <p>Sem recomendações.</p>
-        {% endfor %}
+        </template>
+
+        <template x-if="!loading">
+            <div class="contents">
+                {% for img in recomendacoes %}
+                  <div class="masonry-item">
+                    <div class="cinematic-card group relative">
+                      <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}" class="block">
+                        <div class="cinematic-img-container">
+                          <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" class="cinematic-img w-full rounded-2xl object-cover" loading="lazy">
+                          
+                          <div class="cinematic-overlay rounded-2xl">
+                            <div class="flex flex-wrap gap-1 mb-2">
+                              {% if img.categoria_texto %}
+                                <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-brand-accent/20 border border-brand-accent/30 text-brand-secondary">
+                                  {{ img.categoria_texto }}
+                                </span>
+                              {% endif %}
+                            </div>
+                            <h3 class="text-sm font-bold text-white tracking-wide truncate mb-2 leading-tight">{{ img.titulo }}</h3>
+                            
+                            {% if recommendation_reasons and recommendation_reasons.get(img.id) %}
+                              <p class="text-[10px] text-brand-secondary/90 italic truncate mb-2.5">
+                                Motivo: {{ recommendation_reasons.get(img.id) }}
+                              </p>
+                            {% endif %}
+                            
+                            <div class="flex items-center justify-between border-t border-white/10 pt-2.5">
+                              <div class="flex items-center gap-1.5 min-w-0">
+                                <img src="{{ img.autor.foto_url or url_for('static', filename='imgICO/icone.png') }}" class="w-5.5 h-5.5 rounded-full object-cover border border-white/20">
+                                <span class="text-xs font-semibold text-gray-200 truncate max-w-[110px]">{{ img.autor.nome.split(' ')[0] }}</span>
+                              </div>
+                              {% if img.localizacao %}
+                                <span class="flex items-center gap-0.5 text-[10px] text-gray-300 font-medium">
+                                  <i data-lucide="map-pin" class="w-3 h-3 text-brand-secondary"></i>
+                                  <span class="truncate max-w-[80px]">{{ img.localizacao.city or img.localizacao.address.split(',')[0] }}</span>
+                                </span>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="col-span-full py-10 text-center text-muted">Sem destaques no momento.</div>
+                {% endfor %}
+            </div>
+        </template>
+
       </div>
     </section>
 
-    <section class="section">
-      <h2>Catálogo</h2>
-      <div class="grid">
-        {% for img in imagens %}
-          <div class="card">
-            <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}">
-              <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy">
-            </a>
-            <div class="card-body">
-              <h3>{{ img.titulo }}</h3>
-              {% if img.categoria_texto %}
-                <span class="badge">{{ img.categoria_texto }}</span>
-              {% endif %}
+    <!-- SECTION 2: CATÁLOGO COMPLETO -->
+    <section class="space-y-6 pt-6">
+      <div class="flex items-center gap-2 border-b border-white/5 pb-3">
+        <i data-lucide="layout-grid" class="w-5 h-5 text-brand-accent"></i>
+        <h2 class="text-xl font-extrabold tracking-tight text-white">Catálogo de imagens</h2>
+      </div>
+      
+      <div class="masonry-grid" x-data="{ loading: true }" x-init="setTimeout(() => loading = false, 500)">
+        
+        <!-- Skeletons -->
+        <template x-if="loading">
+            <div class="contents">
+                {% for i in range(8) %}
+                <div class="masonry-item">
+                    <div class="cinematic-card h-[340px] skeleton rounded-2xl"></div>
+                </div>
+                {% endfor %}
             </div>
-          </div>
-        {% endfor %}
+        </template>
+
+        <!-- Masonry Grid items -->
+        <template x-if="!loading">
+            <div class="contents">
+                {% for img in imagens %}
+                  <div class="masonry-item">
+                    <div class="cinematic-card group relative">
+                      <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}" class="block">
+                        <div class="cinematic-img-container">
+                          <img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" class="cinematic-img w-full rounded-2xl object-cover" loading="lazy">
+                          
+                          <div class="cinematic-overlay rounded-2xl">
+                            <div class="flex flex-wrap gap-1 mb-2">
+                              {% if img.categoria_texto %}
+                                <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-brand-accent/20 border border-brand-accent/30 text-brand-secondary">
+                                  {{ img.categoria_texto }}
+                                </span>
+                              {% endif %}
+                            </div>
+                            <h3 class="text-sm font-bold text-white tracking-wide truncate mb-3 leading-tight">{{ img.titulo }}</h3>
+                            
+                            <div class="flex items-center justify-between border-t border-white/10 pt-2.5">
+                              <div class="flex items-center gap-1.5 min-w-0">
+                                <img src="{{ img.autor.foto_url or url_for('static', filename='imgICO/icone.png') }}" class="w-5.5 h-5.5 rounded-full object-cover border border-white/20">
+                                <span class="text-xs font-semibold text-gray-200 truncate max-w-[110px]">{{ img.autor.nome.split(' ')[0] }}</span>
+                              </div>
+                              {% if img.localizacao %}
+                                <span class="flex items-center gap-0.5 text-[10px] text-gray-300 font-medium">
+                                  <i data-lucide="map-pin" class="w-3 h-3 text-brand-secondary"></i>
+                                  <span class="truncate max-w-[80px]">{{ img.localizacao.city or img.localizacao.address.split(',')[0] }}</span>
+                                </span>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
+                {% endfor %}
+            </div>
+        </template>
+
       </div>
     </section>
   {% endif %}
 
 </div>
-
-<style>
-.container { padding:1rem; max-width:1200px; margin:0 auto; }
-.exposicao-header .descricao { margin:0.4rem 0; color:var(--muted); }
-.section { margin:1rem 0; }
-.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; }
-.card { background:var(--card); border-radius:0.6rem; overflow:hidden; box-shadow:var(--shadow); }
-.card img { width:100%; height:180px; object-fit:cover; display:block; }
-.card-body { padding:0.6rem; }
-.card-body h3 { margin:0 0 0.4rem 0; font-size:1rem; }
-.badge { background:rgba(0,0,0,0.06); padding:0.15rem 0.4rem; border-radius:0.35rem; font-size:0.8rem; }
-.actions-row .btn-link { text-decoration:none; color:var(--primary); }
-</style>
-
 {% endblock %}

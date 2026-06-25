@@ -1,134 +1,395 @@
 <!doctype html>
-<html lang="pt">
+<html lang="pt" class="dark">
 <head>
     <meta charset="utf-8">
-    <title>ArteNuvem</title>
+    <title>{% block title %}ArteNuvem{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="{{ url_for('static', filename='imgICO/icone.png') }}" type="image/png">
+    
+    <!-- Modern Typography: Outfit & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            bg: '#0f0f10',
+                            card: '#17181c',
+                            accent: '#7c5cff',
+                            accentHover: '#6744f5',
+                            secondary: '#00c2ff',
+                            text: '#f5f5f5',
+                            border: 'rgba(255, 255, 255, 0.08)'
+                        }
+                    },
+                    fontFamily: {
+                        outfit: ['Outfit', 'sans-serif'],
+                        inter: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Alpine.js & HTMX & Lucide CDNs -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Base Custom styles (Theme Variables & Fallbacks) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style type="text/tailwindcss">
+        /* Inline utility bindings */
+        .glass-nav {
+            @apply sticky top-4 z-40 mx-auto max-w-[1400px] w-[95%] rounded-2xl border border-white/5 bg-[#17181c]/60 px-6 py-3.5 shadow-2xl backdrop-blur-xl transition-all duration-300;
+        }
+        :root[data-theme="light"] .glass-nav {
+            @apply bg-white/70 border-black/5 shadow-lg;
+        }
+    </style>
 </head>
-<body>
-<header class="topbar">
-    <div class="logo-area" onclick="window.location='{{ url_for('index') }}'">
-        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="ArteNuvem" class="logo-img">
-        <span class="logo-text">ArteNuvem</span>
-    </div>
+<body class="bg-brand-bg text-brand-text font-outfit min-h-screen flex flex-col antialiased">
 
-    <div class="search-area">
-        <form method="get" action="{{ url_for('index') }}" class="search-form">
-            <input type="text" name="q" placeholder="Pesquisar títulos, tags..." value="{{ query_text if query_text is defined else '' }}">
-            <select name="categoria" onchange="this.form.submit()">
-                <option value="">Todos</option>
-                {% if categorias is defined %}
-                    {% for c in categorias %}
-                        <option value="{{ c.id }}" {% if selected_categoria is defined and selected_categoria==c.id %}selected{% endif %}>
-                            {{ c.nome }}
-                        </option>
-                    {% endfor %}
-                {% endif %}
-            </select>
-            <button type="submit" aria-label="Pesquisar">🔎</button>
-        </form>
-    </div>
-
-    <div class="topbar-right">
-        <button class="icon-btn theme-toggle" onclick="toggleTheme()" title="Trocar tema">🌙</button>
-
-        {% if current_user %}
-        <div class="user-box">
-            <a href="{{ url_for('perfil', imagem_id=current_user.id) }}" style="display:flex;align-items:center;text-decoration:none;color:inherit;">
-              <img
-                src="{{ current_user.foto_url or url_for('static', filename='imgICO/icone.png') }}"
-                class="user-avatar"
-                alt="perfil"
-              >
-              <div class="user-meta" style="margin-left:0.4rem;">
-                  <div class="user-name">{{ current_user.nome }}</div>
-              </div>
-            </a>
-            <a href="{{ url_for('logout') }}" class="btn-link" title="Logout" style="margin-left:0.6rem;">Logout</a>
+<!-- FLOATING GLASS NAVBAR -->
+<header class="glass-nav mt-4" x-data="{ userDropdown: false, notifDropdown: false }">
+    <div class="flex items-center justify-between gap-4">
+        
+        <!-- Logo Area -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="window.location='{{ url_for('index') }}'">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="ArteNuvem" class="w-9 h-9 rounded-xl object-cover shadow-md shadow-brand-accent/20">
+            <span class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-brand-text to-brand-secondary bg-clip-text text-transparent">ArteNuvem</span>
         </div>
-        {% else %}
-        <a class="btn-login" href="{{ url_for('login') }}">Login com Google</a>
-        {% endif %}
 
-        <button class="icon-btn hamburger" onclick="toggleMenu()" title="Menu">☰</button>
+        <!-- Search Bar -->
+        <div class="hidden md:flex flex-1 max-w-xl mx-4">
+            <form method="get" action="{{ url_for('index') }}" class="w-full flex items-center gap-2 bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5 rounded-full px-4 py-1.5 focus-within:border-brand-accent/50 focus-within:ring-2 focus-within:ring-brand-accent/15 transition-all">
+                <i data-lucide="search" class="w-4.5 h-4.5 text-muted"></i>
+                <input type="text" name="q" placeholder="Pesquisar títulos, tags, autores..." value="{{ query_text if query_text is defined else '' }}" class="w-full bg-transparent text-sm border-0 focus:ring-0 focus:outline-none placeholder:text-muted/60 text-brand-text">
+                
+                <select name="categoria" onchange="this.form.submit()" class="bg-transparent text-xs border-0 text-muted/80 focus:ring-0 py-0 pr-8 cursor-pointer select-none">
+                    <option value="" class="bg-brand-card">Todos</option>
+                    {% if categorias is defined %}
+                        {% for c in categorias %}
+                            <option value="{{ c.id }}" {% if selected_categoria is defined and selected_categoria==c.id %}selected{% endif %} class="bg-brand-card text-brand-text">
+                                {{ c.nome }}
+                            </option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </form>
+        </div>
+
+        <!-- Topbar Right Actions -->
+        <div class="flex items-center gap-3">
+            <!-- Theme Toggle -->
+            <button class="w-10 h-10 flex items-center justify-center rounded-full border border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/25 text-brand-text hover:bg-brand-accent hover:text-white transition-all duration-300" onclick="toggleTheme()" title="Trocar tema">
+                <i data-lucide="moon" class="w-4 h-4 dark:block hidden"></i>
+                <i data-lucide="sun" class="w-4 h-4 dark:hidden block"></i>
+            </button>
+
+            {% if current_user %}
+            <!-- Notifications System -->
+            <div class="relative">
+                <button class="w-10 h-10 flex items-center justify-center rounded-full border border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/25 hover:bg-brand-accent hover:text-white transition-all duration-300 relative" @click="notifDropdown = !notifDropdown; userDropdown = false" title="Notificações">
+                    <i data-lucide="bell" class="w-4.5 h-4.5"></i>
+                    {% if unread_notifications|length > 0 %}
+                    <span class="absolute -top-1 -right-1 bg-emerald-500 text-white font-semibold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-brand-card animate-pulse">
+                        {{ unread_notifications|length }}
+                    </span>
+                    {% endif %}
+                </button>
+                
+                <!-- Notification Dropdown -->
+                <div x-show="notifDropdown" @click.away="notifDropdown = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95 translate-y-2" x-transition:enter-end="opacity-100 scale-100 translate-y-0" class="absolute right-0 mt-3 w-80 rounded-2xl glass-panel border border-white/10 shadow-2xl z-50 overflow-hidden" style="display: none;">
+                    <div class="flex items-center justify-between p-4 border-b border-white/15">
+                        <h3 class="font-bold text-sm tracking-wide">Notificações</h3>
+                        {% if notifications|length > 0 %}
+                        <form action="{{ url_for('limpar_notificacoes') }}" method="post" class="m-0">
+                            <button type="submit" class="text-xs font-semibold text-rose-500 hover:text-rose-400 bg-transparent p-0 border-0 cursor-pointer">Limpar Tudo</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Notification Pause Controls -->
+                    <div class="p-3 bg-white/5 dark:bg-black/20 border-b border-white/10 text-xs">
+                        <form action="{{ url_for('pausar_notificacoes') }}" method="post" class="flex items-center justify-between gap-2">
+                            <label class="font-medium text-muted">
+                                {% if notifications_paused %}
+                                ⏸️ Pausado até {{ notifications_paused_until_str }}
+                                {% else %}
+                                🔔 Notificações Ativas
+                                {% endif %}
+                            </label>
+                            <select name="duracao" onchange="this.form.submit()" class="bg-black/20 border border-white/10 rounded px-2 py-0.5 text-[10px] text-brand-text cursor-pointer outline-none">
+                                <option value="">-- Pausar --</option>
+                                {% if notifications_paused %}
+                                <option value="0">Reativar</option>
+                                {% endif %}
+                                <option value="15">15 min</option>
+                                <option value="60">1 hora</option>
+                                <option value="480">8 horas</option>
+                                <option value="1440">24 horas</option>
+                            </select>
+                        </form>
+                    </div>
+
+                    <div class="max-height-[320px] overflow-y-auto divide-y divide-white/5">
+                        {% if notifications|length == 0 %}
+                        <div class="p-8 text-center text-xs text-muted">Sem notificações recentes.</div>
+                        {% else %}
+                            {% for n in notifications %}
+                            {% set notification_url = url_for('imagem_detalhe', imagem_id=n.id_imagem) if n.id_imagem else '#' %}
+                            <div class="p-4 flex justify-between items-start gap-2 hover:bg-white/5 cursor-pointer {% if not n.is_read %}bg-emerald-500/5 border-l-2 border-emerald-500{% endif %}" onclick='readAndGo(event, {{ n.id|tojson }}, {{ notification_url|tojson }})'>
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs text-brand-text leading-snug">{{ n.message }}</span>
+                                    <span class="text-[10px] text-muted">{{ n.created_at.strftime('%d/%m %H:%M') }}</span>
+                                </div>
+                                {% if not n.is_read %}
+                                <button class="text-muted hover:text-rose-500 bg-transparent border-0 cursor-pointer p-1 text-[11px]" onclick="readNotificationOnly(event, '{{ n.id }}')" title="Marcar como lida">✕</button>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Area -->
+            <div class="relative">
+                <button class="flex items-center gap-2 bg-white/5 dark:bg-black/20 hover:bg-white/10 rounded-full pl-1.5 pr-3 py-1.5 border border-white/10 dark:border-white/5 transition-all" @click="userDropdown = !userDropdown; notifDropdown = false">
+                    <img src="{{ current_user.foto_url or url_for('static', filename='imgICO/icone.png') }}" class="w-7 h-7 rounded-full object-cover border border-white/10" alt="avatar">
+                    <span class="hidden sm:inline font-bold text-xs tracking-wide">{{ current_user.nome.split(' ')[0] }}</span>
+                </button>
+                
+                <!-- Profile Dropdown Menu -->
+                <div x-show="userDropdown" @click.away="userDropdown = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95 translate-y-2" x-transition:enter-end="opacity-100 scale-100 translate-y-0" class="absolute right-0 mt-3 w-56 rounded-2xl glass-panel border border-white/10 shadow-2xl z-50 overflow-hidden" style="display: none;">
+                    <div class="p-4 border-b border-white/15 bg-white/5">
+                        <div class="font-bold text-sm tracking-tight text-brand-text">{{ current_user.nome }}</div>
+                        <div class="text-[10px] text-muted truncate mt-0.5">{{ current_user.email }}</div>
+                    </div>
+                    <div class="p-1.5">
+                        <a href="{{ url_for('perfil', imagem_id=current_user.id) }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-brand-text hover:bg-brand-accent hover:text-white rounded-lg transition-all"><i data-lucide="user" class="w-4 h-4"></i> O meu Perfil</a>
+                        <a href="{{ url_for('email_settings') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-brand-text hover:bg-brand-accent hover:text-white rounded-lg transition-all"><i data-lucide="settings" class="w-4 h-4"></i> Definições</a>
+                        <hr class="border-white/10 my-1">
+                        <a href="{{ url_for('logout') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Login Button -->
+            <a class="flex items-center gap-2 bg-gradient-to-r from-brand-accent to-purple-600 hover:from-brand-accentHover hover:to-purple-700 text-white font-bold text-xs px-4 py-2.5 rounded-full shadow-lg shadow-brand-accent/25 transition-all" href="{{ url_for('login') }}">
+                <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                <span>Login Google</span>
+            </a>
+            {% endif %}
+
+            <!-- Hamburger Button -->
+            <button class="w-10 h-10 flex items-center justify-center rounded-full border border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/25 text-brand-text hover:bg-brand-accent hover:text-white transition-all duration-300" @click="$dispatch('toggle-menu')" title="Menu principal">
+                <i data-lucide="menu" class="w-4.5 h-4.5"></i>
+            </button>
+        </div>
     </div>
 </header>
 
-<nav class="mobile-menu" id="mobileMenu" aria-hidden="true">
-    <a href="{{ url_for('index') }}">Início</a>
-    <a href="{{ url_for('exposicao') }}">Exposição do Mês</a>
+<!-- SLIDE-OUT SIDEBAR MENU (Alpine.js Drawer) -->
+<div x-data="{ open: false }" @toggle-menu.window="open = !open" class="relative">
+    <!-- Backdrop -->
+    <div x-show="open" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="open = false" 
+         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" style="display: none;"></div>
+         
+    <!-- Panel -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300 transform"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in duration-200 transform"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="fixed right-0 top-0 bottom-0 w-80 glass-panel border-l border-white/10 z-50 p-6 flex flex-col justify-between overflow-y-auto" style="display: none;">
+         
+         <div class="flex flex-col gap-6">
+             <div class="flex items-center justify-between">
+                 <h2 class="font-extrabold text-lg tracking-wide uppercase text-brand-accent">Menu</h2>
+                 <button class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10" @click="open = false">
+                     <i data-lucide="x" class="w-4 h-4"></i>
+                 </button>
+             </div>
+             
+             <!-- Search form inside mobile sidebar -->
+             <div class="block md:hidden mt-2">
+                 <form method="get" action="{{ url_for('index') }}" class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 focus-within:border-brand-accent/50 transition-all">
+                     <i data-lucide="search" class="w-4 h-4 text-muted"></i>
+                     <input type="text" name="q" placeholder="Pesquisar..." class="w-full bg-transparent text-xs border-0 focus:ring-0 focus:outline-none placeholder:text-muted/60 text-brand-text">
+                 </form>
+             </div>
+             
+             <nav class="flex flex-col gap-1.5 mt-2">
+                 <a href="{{ url_for('index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text hover:bg-brand-accent hover:text-white rounded-xl transition-all"><i data-lucide="home" class="w-4.5 h-4.5"></i> Home</a>
+                 <a href="{{ url_for('exposicao') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text hover:bg-brand-accent hover:text-white rounded-xl transition-all"><i data-lucide="calendar" class="w-4.5 h-4.5"></i> Exposição do Mês</a>
+                 <a href="{{ url_for('public_estatisticas') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text hover:bg-brand-accent hover:text-white rounded-xl transition-all"><i data-lucide="bar-chart-2" class="w-4.5 h-4.5"></i> Estatísticas de Utilizadores</a>
 
-    {% if current_user %}
-      <a href="{{ url_for('publicar') }}">Publicar imagem</a>
-      <a href="{{ url_for('exportar_exposicao') }}">Exportar Exposição (PDF)</a>
-      <a href="{{ url_for('perfil', imagem_id=current_user.id) }}">Perfil</a>
-    {% endif %}
+                 {% if current_user %}
+                   <a href="{{ url_for('publicar') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text hover:bg-brand-accent hover:text-white rounded-xl transition-all"><i data-lucide="plus-circle" class="w-4.5 h-4.5"></i> Publicar imagem</a>
+                   <a href="{{ url_for('exportar_exposicao') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text hover:bg-brand-accent hover:text-white rounded-xl transition-all"><i data-lucide="file-text" class="w-4.5 h-4.5"></i> Exportar Exposição (PDF)</a>
+                   <a href="{{ url_for('email_settings') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text hover:bg-brand-accent hover:text-white rounded-xl transition-all"><i data-lucide="settings" class="w-4.5 h-4.5"></i> Definições</a>
+                 {% endif %}
 
-    {% set _user_email = (current_user.email if current_user and current_user.email else '')|lower %}
-    {% set _admin_env = (ADMIN_EMAIL|default(''))|lower %}
-    {% if current_user and (_admin_env and _user_email == _admin_env) or (current_user and _admin_env == '') %}
-    <!-- Se ADMIN_EMAIL vazio: não mostrar, (opcional) -->
-        {% if current_user and current_user.email and (current_user.email|lower in ADMIN_EMAILS) %}
-            <a href="{{ url_for('admin') }}">Admin</a>
-        {% endif %}
+                 {% set _user_email = (current_user.email if current_user and current_user.email else '')|lower %}
+                 {% set _admin_env = (ADMIN_EMAIL|default(''))|lower %}
+                 {% if current_user and (_admin_env and _user_email == _admin_env) or (current_user and _admin_env == '') %}
+                     {% if current_user and current_user.email and (current_user.email|lower in ADMIN_EMAILS) %}
+                         <div class="h-px bg-white/10 my-2"></div>
+                         <a href="{{ url_for('admin') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-yellow-500 hover:bg-yellow-500 hover:text-black rounded-xl transition-all"><i data-lucide="shield" class="w-4.5 h-4.5"></i> Admin Console</a>
+                         <a href="{{ url_for('admin_moderation') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-yellow-500 hover:bg-yellow-500 hover:text-black rounded-xl transition-all"><i data-lucide="eye" class="w-4.5 h-4.5"></i> Moderação IA</a>
+                     {% endif %}
+                 {% endif %}
+             </nav>
+         </div>
 
-    {% endif %}
+         <div class="border-t border-white/10 pt-4 flex flex-col gap-1 text-[11px] text-muted">
+             {% if current_user %}
+                <span>Conectado como:</span>
+                <span class="font-bold text-brand-text">{{ current_user.nome }}</span>
+             {% else %}
+                <span>Bem-vindo à rede social do ArteNuvem. Faça login para partilhar as suas obras.</span>
+             {% endif %}
+         </div>
+    </div>
+</div>
 
-    <span class="mobile-menu-footer">
-      {% if current_user %}
-        Conectado como {{ current_user.nome }}
-      {% else %}
-        Login Google Auth em desenvolvimento
-      {% endif %}
-    </span>
-</nav>
-
-<main>
+<!-- MAIN VIEWPORT -->
+<main class="flex-1 max-w-[1400px] w-full mx-auto px-4 md:px-6 py-6 mt-2">
+    <!-- Flash Messages Toast Notification style -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="flash-container">
+        <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm w-full">
           {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
+            <div class="toast-notification p-4 flex items-start gap-3 bg-[#17181c] border border-white/10 shadow-2xl rounded-xl relative overflow-hidden" 
+                 x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)">
+              <div class="flex-shrink-0 mt-0.5">
+                  {% if category == 'success' %}
+                  <span class="text-emerald-500"><i data-lucide="check-circle" class="w-5 h-5"></i></span>
+                  {% else %}
+                  <span class="text-rose-500"><i data-lucide="alert-circle" class="w-5 h-5"></i></span>
+                  {% endif %}
+              </div>
+              <div class="flex-1">
+                  <p class="text-xs font-semibold text-brand-text">{{ message }}</p>
+              </div>
+              <button class="text-muted hover:text-brand-text bg-transparent border-0 cursor-pointer p-0 text-xs" @click="show = false">✕</button>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
     {% endwith %}
+    
     {% block content %}{% endblock %}
 </main>
 
-<footer>
-    <small>ArteNuvem &copy; 2025 — Projeto académico</small>
+<!-- CINEMATIC FOOTER -->
+<footer class="mt-auto border-t border-white/5 bg-[#17181c]/20 py-8 px-6 text-center text-xs text-muted/65">
+    <div class="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <span>ArteNuvem &copy; 2026 — Plataforma Social Artística Premium</span>
+        <div class="flex items-center gap-4 text-muted/50">
+            <a href="#" class="hover:text-brand-text transition-colors">Termos</a>
+            <span>•</span>
+            <a href="#" class="hover:text-brand-text transition-colors">Privacidade</a>
+            <span>•</span>
+            <a href="#" class="hover:text-brand-text transition-colors">Ajuda</a>
+        </div>
+    </div>
 </footer>
 
 <script>
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme;
+    // Ambas as opções dark e gray contam como dark para o Tailwind class
+    if (theme === 'dark' || theme === 'gray') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     localStorage.setItem('theme', theme);
-    const btn = document.querySelector('.theme-toggle');
-    if (btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+    // Dispara evento para sincronizar componentes AlpineJS em execução
+    window.dispatchEvent(new CustomEvent('theme-changed', { detail: theme }));
   }
+  
   function toggleTheme() {
     const current = document.documentElement.dataset.theme || 'dark';
-    setTheme(current === 'dark' ? 'light' : 'dark');
+    let next = 'dark';
+    if (current === 'dark') next = 'light';
+    else if (current === 'light') next = 'gray';
+    else if (current === 'gray') next = 'dark';
+    setTheme(next);
   }
+  
   (function () {
     const saved = localStorage.getItem('theme') || 'dark';
     setTheme(saved);
   })();
-  function toggleMenu() {
-    const menu = document.getElementById('mobileMenu');
-    menu.classList.toggle('open');
-    menu.setAttribute('aria-hidden', !menu.classList.contains('open'));
+
+  function readAndGo(event, notifId, url) {
+    if (event.target.classList.contains('btn-delete-notif') || event.target.tagName === 'BUTTON') return;
+    
+    event.preventDefault();
+    fetch(`/notificacoes/ler/${notifId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).finally(() => {
+      window.location.href = url;
+    });
   }
-  document.addEventListener('click', function(e){
-    const menu = document.getElementById('mobileMenu');
-    const btn = document.querySelector('.hamburger');
-    if (!menu.contains(e.target) && !btn.contains(e.target)) {
-      menu.classList.remove('open');
-      menu.setAttribute('aria-hidden', "true");
-    }
+
+  function readNotificationOnly(event, notifId) {
+    event.stopPropagation();
+    event.preventDefault();
+    const item = event.target.closest('.notification-item') || event.target.parentElement;
+    fetch(`/notificacoes/ler/${notifId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      if (response.ok) {
+        if (item) {
+          item.remove();
+        }
+        const topBadge = document.querySelector('.notifications-badge');
+        if (topBadge) {
+          const count = parseInt(topBadge.textContent) - 1;
+          if (count > 0) {
+            topBadge.textContent = count;
+          } else {
+            topBadge.remove();
+          }
+        }
+      }
+    });
+  }
+
+  // Initialize Lucide icons on render
+  document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+  });
+  
+  // Re-run Lucide on HTMX content swaps
+  document.body.addEventListener('htmx:afterSwap', () => {
+      lucide.createIcons();
   });
 </script>
 </body>

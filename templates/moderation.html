@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Moderação de Comentários IA{% endblock %}
+{% block content %}
+
+<!-- Blurred decorative blobs -->
+<div class="relative min-h-[70vh]">
+  <div class="absolute -top-40 -left-40 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute top-60 -right-40 w-96 h-96 bg-brand-secondary/5 rounded-full blur-3xl pointer-events-none"></div>
+
+  <!-- Page Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div>
+      <span class="text-[10px] font-extrabold uppercase tracking-widest text-brand-accent">Consola de Administração</span>
+      <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-text to-brand-secondary bg-clip-text text-transparent flex items-center gap-2.5 mt-1">
+        <i data-lucide="shield-alert" class="w-8 h-8 text-brand-accent"></i> Moderação de Comentários
+      </h1>
+      <p class="text-sm text-muted mt-1.5">Gerencie a fila de comentários analisados pelo filtro de segurança e moderação automática da IA.</p>
+    </div>
+    <a class="inline-flex items-center gap-2 px-4 py-2 border border-white/10 dark:border-white/5 rounded-xl bg-white/5 hover:bg-white/10 text-brand-text text-sm transition-all duration-300 font-semibold shadow-sm" href="{{ url_for('admin') }}">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      <span>Voltar ao Admin</span>
+    </a>
+  </div>
+
+  <!-- Stats Grid -->
+  {% set total_stats = stats.pendente + stats.aprovado + stats.bloqueado %}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <!-- Total Card -->
+    <div class="glass-panel p-4 rounded-2xl border border-white/15 dark:border-white/5 flex items-center justify-between">
+      <div>
+        <span class="text-[10px] font-bold text-muted uppercase tracking-wider block">Total Processado</span>
+        <span class="text-2xl font-extrabold text-brand-text mt-1 block">{{ total_stats }}</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center text-brand-accent">
+        <i data-lucide="message-square" class="w-5 h-5"></i>
+      </div>
+    </div>
+    
+    <!-- Pendentes Card -->
+    <div class="glass-panel p-4 rounded-2xl border border-white/15 dark:border-white/5 flex items-center justify-between">
+      <div>
+        <span class="text-[10px] font-bold text-amber-500 uppercase tracking-wider block">Aguardando Revisão</span>
+        <span class="text-2xl font-extrabold text-amber-500 mt-1 block">{{ stats.pendente }}</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+        <i data-lucide="clock" class="w-5 h-5"></i>
+      </div>
+    </div>
+
+    <!-- Aprovados Card -->
+    <div class="glass-panel p-4 rounded-2xl border border-white/15 dark:border-white/5 flex items-center justify-between">
+      <div>
+        <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block">Aprovados</span>
+        <span class="text-2xl font-extrabold text-emerald-500 mt-1 block">{{ stats.aprovado }}</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <i data-lucide="check-circle" class="w-5 h-5"></i>
+      </div>
+    </div>
+
+    <!-- Bloqueados Card -->
+    <div class="glass-panel p-4 rounded-2xl border border-white/15 dark:border-white/5 flex items-center justify-between">
+      <div>
+        <span class="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">Bloqueados</span>
+        <span class="text-2xl font-extrabold text-rose-500 mt-1 block">{{ stats.bloqueado }}</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+        <i data-lucide="ban" class="w-5 h-5"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Segmented Navigation (Tabs) -->
+  <nav class="flex flex-wrap gap-2 p-1.5 bg-white/5 dark:bg-black/40 border border-white/10 dark:border-white/5 rounded-2xl w-max mb-6">
+    {% for key, label in [('pendente','Pendentes'), ('aprovado','Aprovados'), ('bloqueado','Bloqueados'), ('todos','Todos')] %}
+      {% set isActive = (estado == key) %}
+      <a class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 {{ 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20' if isActive else 'text-muted hover:text-brand-text hover:bg-white/5' }}" href="{{ url_for('admin_moderation', estado=key) }}">
+        <span>{{ label }}</span>
+        {% if key in stats %}
+          {% set badgeColor = 'bg-amber-500/20 text-amber-400' if key == 'pendente' else ('bg-emerald-500/20 text-emerald-400' if key == 'aprovado' else 'bg-rose-500/20 text-rose-400') %}
+          <span class="ml-1 px-1.5 py-0.5 text-[9px] font-extrabold rounded-md {{ badgeColor if not isActive else 'bg-white/20 text-white' }}">
+            {{ stats[key] }}
+          </span>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <!-- Feed of Comments -->
+  <section class="flex flex-col gap-5">
+    {% for comentario, imagem, autor, resultado in rows %}
+      <article class="glass-panel p-6 rounded-2xl border border-white/10 dark:border-white/5 relative overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:shadow-black/20 flex flex-col md:flex-row justify-between gap-6">
+        
+        <!-- Status Indicator Strip -->
+        <div class="absolute top-0 left-0 bottom-0 w-1.5 {{ 'bg-amber-500' if comentario.estado_moderacao == 'pendente' else ('bg-emerald-500' if comentario.estado_moderacao == 'aprovado' else 'bg-rose-500') }}"></div>
+
+        <!-- Left Column: User details, comment text, and matches -->
+        <div class="flex-1 flex flex-col justify-between">
+          <div>
+            <!-- User Meta -->
+            <div class="flex items-center gap-3 mb-3">
+              <!-- Profile Avatar -->
+              <div class="w-10 h-10 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0 flex items-center justify-center">
+                {% if autor and autor.foto_url %}
+                  <img src="{{ autor.foto_url }}" class="w-full h-full object-cover" alt="{{ autor.nome }}">
+                {% else %}
+                  <span class="text-xs font-black text-brand-accent uppercase">{{ (autor.nome[0] if autor and autor.nome else 'A') }}</span>
+                {% endif %}
+              </div>
+              <div>
+                <div class="text-sm font-bold text-brand-text leading-tight">{{ autor.nome if autor else 'Utilizador Anónimo' }}</div>
+                <div class="text-[10px] text-muted flex items-center gap-1.5 mt-0.5">
+                  {% if autor %}
+                    <span class="truncate max-w-[180px]">{{ autor.email }}</span>
+                    <span>•</span>
+                  {% endif %}
+                  <span class="flex items-center gap-1">
+                    <i data-lucide="calendar" class="w-3 h-3 text-muted/60"></i>
+                    {{ comentario.data.strftime('%d/%m/%Y %H:%M') if comentario.data else '' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Comment Content Card with Auto-highlighting -->
+            <div class="bg-white/5 dark:bg-black/25 border border-white/10 dark:border-white/5 rounded-2xl p-4 relative mb-3">
+              <i class="w-6 h-6 text-white/5 absolute -top-1 -left-1 font-serif text-3xl select-none">“</i>
+              <div class="pl-1" x-data="{
+                text: {{ comentario.texto|tojson }},
+                proibidas: ['caralho','porra','foda','fode','fodasse','p*ta','puta','merda','burro','idiota','otario','otário','bastardo','viado','filho da puta','fdp','fuck','shit','bitch','bastard','asshole','motherfucker'],
+                matches: [],
+                init() {
+                  let txt = this.text.toLowerCase();
+                  let normalizado = txt.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                  this.proibidas.forEach(word => {
+                    let escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    let regex = new RegExp('\\b' + escaped + '\\b', 'i');
+                    if (regex.test(txt) || regex.test(normalizado) || (word.length >= 4 && (txt.includes(word) || normalizado.includes(word)))) {
+                      this.matches.push(word);
+                    }
+                  });
+                },
+                highlighted() {
+                  let txt = this.text;
+                  this.proibidas.forEach(word => {
+                    let escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    let regex = new RegExp('\\b(' + escaped + ')\\b', 'gi');
+                    txt = txt.replace(regex, '<span class=&quot;bg-rose-500/20 text-rose-400 border border-rose-500/20 px-1 py-0.5 rounded font-bold&quot;>$1</span>');
+                  });
+                  return txt;
+                }
+              }">
+                <p class="text-sm font-medium leading-relaxed text-brand-text tracking-wide break-words" x-html="highlighted()"></p>
+                
+                <!-- Display found keywords -->
+                <template x-if="matches.length > 0">
+                  <div class="mt-3 pt-2.5 border-t border-white/5 flex flex-wrap items-center gap-1.5">
+                    <span class="text-[9px] uppercase font-extrabold tracking-wider text-rose-400 mr-1 flex items-center gap-1">
+                      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Gatilho:
+                    </span>
+                    <template x-for="match in matches">
+                      <span class="px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 rounded-md text-[9px] font-extrabold text-rose-400 uppercase tracking-wide" x-text="match"></span>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- IA Moderation Assessment Details -->
+          <div class="flex flex-wrap items-center gap-3 mt-1.5">
+            <!-- Toxicity Level Slider Indicator -->
+            {% if resultado %}
+              {% set score = (resultado.toxicity_score|float * 100)|int %}
+              {% set barColor = 'bg-emerald-500' if score < 30 else ('bg-amber-500' if score < 70 else 'bg-rose-500') %}
+              {% set textColor = 'text-emerald-400' if score < 30 else ('text-amber-400' if score < 70 else 'text-rose-400') %}
+              <div class="flex items-center gap-2 bg-white/5 border border-white/10 dark:border-white/5 rounded-xl px-3 py-1.5">
+                <span class="text-[10px] text-muted font-bold">Toxicidade IA:</span>
+                <div class="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden flex-shrink-0">
+                  <div class="h-full {{ barColor }}" style="width: {{ score }}%"></div>
+                </div>
+                <span class="text-[10px] font-black {{ textColor }}">{{ score }}%</span>
+              </div>
+              
+              <!-- AI Model used -->
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 border border-white/10 dark:border-white/5 rounded-xl text-[10px] text-muted font-bold">
+                <i data-lucide="cpu" class="w-3 h-3 text-brand-secondary"></i>
+                Modelo: {{ resultado.model_name }}
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 border border-white/10 dark:border-white/5 rounded-xl text-[10px] text-muted font-bold">
+                <i data-lucide="user-cog" class="w-3 h-3 text-amber-500"></i>
+                Sem análise automática
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Right Column: Image Preview Card & Action Panel -->
+        <div class="w-full md:w-56 flex flex-row md:flex-col justify-between items-end md:items-stretch gap-4 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-6">
+          
+          <!-- Image preview block -->
+          {% if imagem %}
+            <div class="flex flex-col gap-2 w-full">
+              <span class="text-[10px] font-bold text-muted uppercase tracking-wider hidden md:block">Obra Associada</span>
+              <a href="{{ url_for('imagem_detalhe', imagem_id=imagem.id) }}" target="_blank" class="group relative flex items-center gap-3 p-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all duration-300 w-full">
+                <div class="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-white/10 relative">
+                  <img src="{{ imagem.caminho_armazenamento }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="{{ imagem.titulo }}">
+                  <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i data-lucide="external-link" class="w-4 h-4 text-white"></i>
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0 pr-2">
+                  <div class="text-xs font-bold text-brand-text truncate leading-tight group-hover:text-brand-secondary transition-colors">{{ imagem.titulo }}</div>
+                  <span class="text-[9px] uppercase font-extrabold tracking-wider text-brand-accent mt-0.5 block">Ver Obra</span>
+                </div>
+              </a>
+            </div>
+          {% endif %}
+
+          <!-- Actions Form Panel -->
+          <div class="w-full flex flex-col gap-2">
+            <span class="text-[10px] font-bold text-muted uppercase tracking-wider hidden md:block">Ações de Moderação</span>
+            <form method="post" class="grid grid-cols-3 md:flex md:flex-col gap-2 w-full">
+              <input type="hidden" name="comentario_id" value="{{ comentario.id }}">
+              
+              <!-- Approve Button -->
+              <button name="action" value="aprovado" type="submit" 
+                      class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 border w-full {{ 'bg-emerald-500 text-white border-emerald-500' if comentario.estado_moderacao == 'aprovado' else 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white border-emerald-500/25 hover:border-emerald-500' }}">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Aprovar</span>
+              </button>
+
+              <!-- Keep Pending Button -->
+              <button name="action" value="pendente" type="submit" 
+                      class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 border w-full {{ 'bg-amber-500 text-white border-amber-500' if comentario.estado_moderacao == 'pendente' else 'bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white border-amber-500/25 hover:border-amber-500' }}">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span>Rever</span>
+              </button>
+              
+              <!-- Block Button -->
+              <button name="action" value="bloqueado" type="submit" 
+                      class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 border w-full {{ 'bg-rose-500 text-white border-rose-500' if comentario.estado_moderacao == 'bloqueado' else 'bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border-rose-500/25 hover:border-rose-500' }}">
+                <i data-lucide="ban" class="w-4 h-4"></i>
+                <span>Bloquear</span>
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </article>
+    {% else %}
+      <!-- Empty State -->
+      <div class="glass-panel p-12 rounded-2xl border border-white/10 dark:border-white/5 flex flex-col items-center justify-center text-center shadow-lg">
+        <div class="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 animate-bounce">
+          <i data-lucide="shield-check" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-xl font-bold text-brand-text">Tudo Organizado!</h3>
+        <p class="text-sm text-muted mt-2 max-w-sm">
+          {% if estado == 'pendente' %}
+            Não existem comentários aguardando revisão. O filtro de segurança está sob controle!
+          {% else %}
+            Não há comentários categorizados como <strong>{{ estado }}</strong>.
+          {% endif %}
+        </p>
+        <a class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-accent hover:bg-brand-accentHover text-white text-xs font-extrabold tracking-wide transition-all shadow-lg shadow-brand-accent/25 hover:-translate-y-0.5" href="{{ url_for('admin_moderation', estado='todos') }}">
+          <i data-lucide="eye" class="w-4 h-4"></i>
+          <span>Ver Todos os Comentários</span>
+        </a>
+      </div>
+    {% endfor %}
+  </section>
+</div>
+
+{% endblock %}

@@ -1,58 +1,442 @@
 {% extends "base.html" %}
-{% block title %}Publicar imagem{% endblock %}
+{% block title %}Publicar Obra — ArteNuvem{% endblock %}
 
 {% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    
+    <div class="border-b border-white/5 pb-3">
+        <span class="text-[10px] font-bold text-brand-accent tracking-widest uppercase">Estúdio de Criação</span>
+        <h1 class="text-3xl font-black tracking-tight text-white mt-1">Publicar Nova Obra</h1>
+    </div>
 
-<div class="container upload-container">
+    <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
 
-    <h1>Publicar imagem</h1>
+        <!-- COLUNA ESQUERDA: ARRASTAR & PRÉ-VISUALIZAÇÃO (5/12) -->
+        <div class="md:col-span-5 space-y-4">
+            
+            <span class="block text-xs font-bold text-muted uppercase tracking-wider">Mídia Digital</span>
+            
+            <!-- Upload Box zone -->
+            <label class="group relative block w-full h-80 rounded-2xl border-2 border-dashed border-white/15 dark:border-white/10 hover:border-brand-accent/50 bg-[#17181c]/40 hover:bg-[#17181c]/70 transition-all cursor-pointer overflow-hidden select-none">
+                <input type="file" name="ficheiro" id="file-input" accept="image/png, image/jpeg" class="hidden" required>
+                
+                <!-- Placeholder display -->
+                <div id="preview-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-brand-accent/10 text-brand-secondary flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i data-lucide="cloud-upload" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="block text-sm font-bold text-white mb-1">Selecionar ou Arrastar Imagem</span>
+                        <span class="block text-[10px] text-muted font-medium">Formatos suportados: PNG ou JPG. Máx. 8MB.</span>
+                    </div>
+                </div>
 
-    <form method="post" enctype="multipart/form-data" class="upload-form">
-
-        <!-- Preview -->
-        <div class="preview-box">
-            <img id="preview-img" src="" alt="Preview da imagem" style="display:none;">
-            <span id="preview-placeholder">Pré-visualização da imagem</span>
+                <!-- Preview image -->
+                <img id="preview-img" src="" alt="Preview da imagem" class="w-full h-full object-contain hidden relative z-10 p-2">
+            </label>
         </div>
 
-        <!-- Ficheiro -->
-        <label class="file-label">
-            Selecionar imagem (JPG / PNG)
-            <input type="file" name="ficheiro" id="file-input" accept="image/png, image/jpeg" required>
-        </label>
+        <!-- COLUNA DIREITA: FORMULÁRIO DE DADOS (7/12) -->
+        <div class="md:col-span-7 space-y-6 bg-[#17181c]/30 border border-white/5 p-6 rounded-2xl">
+            
+            <!-- Sugestão IA -->
+            <div class="space-y-3 bg-brand-accent/5 border border-brand-accent/15 p-4 rounded-xl"
+                 x-data="{ 
+                     iaPrompt: '', 
+                     iaLoading: false,
+                     gerarComIA() {
+                         if (!this.iaPrompt.trim()) {
+                             alert('Por favor, descreva a sua ideia ou obra antes de gerar.');
+                             return;
+                         }
+                         this.iaLoading = true;
+                         fetch('/api/sugestao_ia', {
+                             method: 'POST',
+                             headers: {
+                                 'Content-Type': 'application/json'
+                             },
+                             body: JSON.stringify({ prompt: this.iaPrompt })
+                         })
+                         .then(r => r.json())
+                         .then(data => {
+                             if (data.titulo && data.descricao) {
+                                 const tInput = document.querySelector('input[name=&quot;titulo&quot;]');
+                                 if (tInput) {
+                                     tInput.value = data.titulo;
+                                 }
+                                 const dTextarea = document.querySelector('textarea[name=&quot;descricao&quot;]');
+                                 if (dTextarea) {
+                                     dTextarea.value = data.descricao;
+                                 }
+                             } else if (data.error) {
+                                 alert(data.error);
+                             } else {
+                                 alert('Ocorreu um erro ao obter sugestões da IA.');
+                             }
+                         })
+                         .catch(err => {
+                             console.error(err);
+                             alert('Erro de rede ao comunicar com o servidor.');
+                         })
+                         .finally(() => {
+                             this.iaLoading = false;
+                             if (window.lucide) {
+                                 window.lucide.createIcons();
+                             }
+                         });
+                     }
+                 }">
+                <div class="flex items-center gap-1.5 border-b border-white/5 pb-2">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-brand-secondary"></i>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-widest">Ferramenta de Sugestão IA</h3>
+                </div>
+                <p class="text-[10px] text-muted font-medium">Não tem ideias para o título ou descrição? Descreva o que quer publicar, e a IA gera ambos para si.</p>
+                <div class="flex gap-2">
+                    <input type="text" x-model="iaPrompt" placeholder="Ex: um pôr do sol calmo em aguarela com montanhas..." 
+                           class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-accent/50 text-white">
+                    <button type="button" @click="gerarComIA()" :disabled="iaLoading"
+                            class="bg-brand-accent hover:bg-brand-accentHover text-white font-bold text-xs px-4 py-2 rounded-xl transition-all disabled:opacity-50 flex items-center gap-1 border-0 cursor-pointer">
+                        <span x-text="iaLoading ? 'A gerar...' : 'Sugerir'"></span>
+                    </button>
+                </div>
+            </div>
 
-        <!-- Dados -->
-        <div class="form-group">
-            <label>Título</label>
-            <input type="text" name="titulo" placeholder="Título da imagem" required>
+            <!-- Detalhes Base -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold text-brand-secondary uppercase tracking-widest border-b border-white/5 pb-2">Informações Gerais</h3>
+                
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-muted uppercase tracking-wide">Título da Obra</label>
+                    <input type="text" name="titulo" placeholder="Ex: Crepúsculo no Vale" required 
+                           class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm">
+                </div>
 
-            <label>Categoria</label>
-            <select name="categoria">
-                <option value="">Sem filtro</option>
-                {% for c in categorias %}
-                    <option value="{{ c.id }}">{{ c.nome }}</option>
-                {% endfor %}
-            </select>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-muted uppercase tracking-wide">Categoria</label>
+                        <select name="categoria" class="w-full bg-brand-card border border-white/10 rounded-xl px-4 py-2.5 text-sm cursor-pointer">
+                            <option value="">Sem categoria</option>
+                            {% for c in categorias %}
+                                <option value="{{ c.id }}">{{ c.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-            <label>Tags</label>
-            <input type="text" name="tags" placeholder="ex: natureza, noite, macro">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-muted uppercase tracking-wide">Tags (separadas por vírgula)</label>
+                        <input type="text" name="tags" placeholder="ex: pintura, óleo, abstrato" 
+                               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-muted uppercase tracking-wide">Descrição / Inspiração</label>
+                    <textarea name="descricao" maxlength="500" placeholder="Partilhe a história por trás desta criação, a técnica que utilizou ou a sua inspiração..." 
+                              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm h-28 resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Localização -->
+            <div class="space-y-4" x-data="{ 
+                showLocation: false, 
+                showMapModal: false, 
+                map: null, 
+                marker: null, 
+                
+                clearInputs() {
+                    document.querySelector('input[name=&quot;address&quot;]').value = '';
+                    document.querySelector('input[name=&quot;city&quot;]').value = '';
+                    document.querySelector('input[name=&quot;country&quot;]').value = '';
+                    document.querySelector('input[name=&quot;latitude&quot;]').value = '';
+                    document.querySelector('input[name=&quot;longitude&quot;]').value = '';
+                },
+                
+                loadLeaflet(callback) {
+                    if (window.L) {
+                        callback();
+                        return;
+                    }
+                    if (!document.getElementById('leaflet-css')) {
+                        const link = document.createElement('link');
+                        link.id = 'leaflet-css';
+                        link.rel = 'stylesheet';
+                        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                        document.head.appendChild(link);
+                    }
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                    script.onload = () => {
+                        // Fix for Leaflet default icon paths in dynamically loaded context
+                        delete L.Icon.Default.prototype._getIconUrl;
+                        L.Icon.Default.mergeOptions({
+                            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+                            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                        });
+                        callback();
+                    };
+                    document.head.appendChild(script);
+                },
+                
+                openMapModal() {
+                    this.showMapModal = true;
+                    this.loadLeaflet(() => {
+                        let latVal = parseFloat(document.querySelector('input[name=&quot;latitude&quot;]').value);
+                        let lngVal = parseFloat(document.querySelector('input[name=&quot;longitude&quot;]').value);
+                        
+                        if (isNaN(latVal) || isNaN(lngVal)) {
+                            latVal = 38.7223;
+                            lngVal = -9.1393;
+                        }
+                        
+                        setTimeout(() => {
+                            if (!this.map) {
+                                this.map = L.map('modalMapContainer').setView([latVal, lngVal], 13);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                    maxZoom: 19,
+                                    attribution: '&amp;copy; &lt;a href=&quot;https://www.openstreetmap.org/copyright&quot;&gt;OpenStreetMap&lt;/a&gt;'
+                                }).addTo(this.map);
+                                
+                                this.marker = L.marker([latVal, lngVal], { draggable: true }).addTo(this.map);
+                                
+                                this.map.on('click', (e) => {
+                                    this.marker.setLatLng(e.latlng);
+                                });
+                            } else {
+                                this.map.setView([latVal, lngVal], 13);
+                                this.marker.setLatLng([latVal, lngVal]);
+                            }
+                            this.map.invalidateSize();
+                        }, 150);
+                    });
+                },
+                
+                confirmMapSelection() {
+                    if (this.marker) {
+                        const pos = this.marker.getLatLng();
+                        const latInput = document.querySelector('input[name=&quot;latitude&quot;]');
+                        const lngInput = document.querySelector('input[name=&quot;longitude&quot;]');
+                        latInput.value = pos.lat.toFixed(6);
+                        lngInput.value = pos.lng.toFixed(6);
+                        
+                        const addressInput = document.querySelector('input[name=&quot;address&quot;]');
+                        const cityInput = document.querySelector('input[name=&quot;city&quot;]');
+                        const countryInput = document.querySelector('input[name=&quot;country&quot;]');
+                        
+                        addressInput.placeholder = 'A carregar morada...';
+                        
+                        fetch(`/api/reverse-geocode?lat=${pos.lat}&lng=${pos.lng}`)
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.address) addressInput.value = data.address;
+                                if (data.city) cityInput.value = data.city;
+                                if (data.country) countryInput.value = data.country;
+                            })
+                            .catch(err => {
+                                console.error('Erro no reverse geocoding do mapa:', err);
+                            })
+                            .finally(() => {
+                                addressInput.placeholder = 'Ex: Museu de Arte de São Paulo';
+                            });
+                    }
+                    this.showMapModal = false;
+                },
+                
+                detectGPS(event) {
+                    const btn = event.currentTarget;
+                    if (!navigator.geolocation) {
+                        alert('A geolocalização não é suportada por este navegador.');
+                        return;
+                    }
+                    
+                    btn.disabled = true;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '⏳ A ler coordenadas...';
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            
+                            document.querySelector('input[name=&quot;latitude&quot;]').value = lat.toFixed(6);
+                            document.querySelector('input[name=&quot;longitude&quot;]').value = lng.toFixed(6);
+                            
+                            btn.innerHTML = '⏳ A obter endereço...';
+                            
+                            fetch(`/api/reverse-geocode?lat=${lat}&lng=${lng}`)
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (data.address) document.querySelector('input[name=&quot;address&quot;]').value = data.address;
+                                    if (data.city) document.querySelector('input[name=&quot;city&quot;]').value = data.city;
+                                    if (data.country) document.querySelector('input[name=&quot;country&quot;]').value = data.country;
+                                })
+                                .catch(err => {
+                                    console.error('Erro no reverse geocoding do GPS:', err);
+                                })
+                                .finally(() => {
+                                    btn.disabled = false;
+                                    btn.innerHTML = originalText;
+                                    lucide.createIcons();
+                                });
+                        },
+                        (error) => {
+                            console.error('Erro ao obter geolocalização:', error);
+                            let msg = 'Não foi possível obter a sua localização.';
+                            if (error.code === error.PERMISSION_DENIED) {
+                                msg = 'Permissão de localização rejeitada. Ative a localização nas definições do navegador.';
+                            }
+                            alert(msg);
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                            lucide.createIcons();
+                        },
+                        { enableHighAccuracy: true, timeout: 8000 }
+                    );
+                }
+            }" x-init="$watch('showLocation', val => { if(!val) clearInputs() })">
+                
+                <div class="flex items-center justify-between gap-4 border-b border-white/5 pb-2">
+                    <h3 class="text-xs font-bold text-brand-secondary uppercase tracking-widest flex items-center gap-1.5">
+                        <i data-lucide="map" class="w-4 h-4"></i> Geolocalização (Opcional)
+                    </h3>
+                    
+                    <!-- Sliding Toggle Switch -->
+                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" x-model="showLocation" class="sr-only peer">
+                        <div class="w-9 h-5 bg-white/10 rounded-full peer peer-focus:outline-none dark:bg-white/5 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-accent"></div>
+                        <span class="ml-2 text-[10px] font-extrabold text-muted uppercase tracking-wider">Ativar</span>
+                    </label>
+                </div>
+
+                <!-- Toggleable Container -->
+                <div x-show="showLocation" 
+                     x-transition:enter="transition ease-out duration-300 transform" 
+                     x-transition:enter-start="opacity-0 -translate-y-2 scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 scale-100" 
+                     x-transition:leave="transition ease-in duration-200 transform" 
+                     x-transition:leave-start="opacity-100 translate-y-0 scale-100" 
+                     x-transition:leave-end="opacity-0 -translate-y-2 scale-95" 
+                     class="space-y-4"
+                     style="display: none;">
+                     
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <!-- Auto Detect GPS Button -->
+                        <button type="button" @click="detectGPS($event)" class="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all cursor-pointer border-0">
+                            <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+                            <span>Captar Localização Atual (GPS)</span>
+                        </button>
+                        
+                        <!-- Map Picker Button -->
+                        <button type="button" @click="openMapModal()" class="inline-flex items-center gap-1.5 bg-brand-accent hover:bg-brand-accentHover text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all cursor-pointer border-0">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                            <span>Selecionar no Mapa</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-muted uppercase tracking-wide">Morada / Nome do Local</label>
+                        <input type="text" name="address" placeholder="Ex: Museu de Arte de São Paulo" :disabled="!showLocation"
+                               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-muted uppercase tracking-wide">Cidade</label>
+                            <input type="text" name="city" placeholder="Lisboa" :disabled="!showLocation"
+                                   class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm">
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-muted uppercase tracking-wide">País</label>
+                            <input type="text" name="country" placeholder="Portugal" :disabled="!showLocation"
+                                   class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-muted uppercase tracking-wide">Latitude</label>
+                            <input type="number" name="latitude" step="any" placeholder="38.7223" :disabled="!showLocation"
+                                   class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm">
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-muted uppercase tracking-wide">Longitude</label>
+                            <input type="number" name="longitude" step="any" placeholder="-9.1393" :disabled="!showLocation"
+                                   class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Modal (Leaflet Lightbox Modal) -->
+                <div x-show="showMapModal" 
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                     style="display: none;"
+                     @keydown.escape.window="showMapModal = false">
+                     
+                    <!-- Clicking backdrop closes modal -->
+                    <div class="absolute inset-0 cursor-pointer" @click="showMapModal = false"></div>
+                    
+                    <div class="bg-[#17181c] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl relative flex flex-col z-10">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between p-4 border-b border-white/5">
+                            <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                                <i data-lucide="map-pin" class="w-4 h-4 text-brand-secondary"></i>
+                                <span>Marcar Ponto no Mapa</span>
+                            </h4>
+                            <button type="button" @click="showMapModal = false" class="text-muted hover:text-white transition-colors p-1.5 hover:bg-white/5 rounded-full border-0 bg-transparent cursor-pointer">
+                                <i data-lucide="x" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Leaflet map element -->
+                        <div id="modalMapContainer" class="w-full h-80 bg-black/20 relative z-0"></div>
+                        
+                        <!-- Footer -->
+                        <div class="flex items-center justify-between p-4 border-t border-white/5 bg-[#17181c]/50">
+                            <span class="text-[10px] text-muted font-semibold">Dica: Arraste o pin ou clique no mapa para alterar a posição.</span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="showMapModal = false" class="px-4 py-2 border border-white/10 hover:bg-white/5 text-muted hover:text-white text-xs font-bold rounded-xl transition-all border-0 bg-transparent cursor-pointer">
+                                    Cancelar
+                                </button>
+                                <button type="button" @click="confirmMapSelection()" class="px-4 py-2 bg-brand-accent hover:bg-brand-accentHover text-white text-xs font-bold rounded-xl transition-all border-0 cursor-pointer">
+                                    Confirmar Localização
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Participar em Exposições -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold text-brand-secondary uppercase tracking-widest border-b border-white/5 pb-2">Submeter para Exposição</h3>
+                
+                <div class="flex flex-col gap-2 max-h-36 overflow-y-auto pr-1">
+                    {% for e in exposicoes %}
+                        <label class="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-brand-accent/50 cursor-pointer select-none transition-colors">
+                            <input type="checkbox" name="exposicoes" value="{{ e.id }}" class="accent-brand-accent w-4 h-4 rounded border-white/25">
+                            <span class="text-xs font-semibold text-brand-text">{{ e.nome }}</span>
+                        </label>
+                    {% else %}
+                        <span class="text-xs text-muted">Não existem exposições virtuais abertas a submissões no momento.</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <button type="submit" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-brand-accent to-purple-600 hover:from-brand-accentHover hover:to-purple-700 text-white font-bold text-sm py-3 rounded-xl shadow-lg shadow-brand-accent/25 transition-all transform hover:-translate-y-0.5 border-0 cursor-pointer mt-4">
+                <i data-lucide="plus-circle" class="w-4.5 h-4.5"></i>
+                <span>Publicar Obra</span>
+            </button>
+
         </div>
-
-        <hr>
-
-        <!-- Exposições -->
-        <label class="section-label">Participar em exposições (opcional)</label>
-        <div class="exposicoes-box">
-            {% for e in exposicoes %}
-                <label class="checkbox-row">
-                    <input type="checkbox" name="exposicoes" value="{{ e.id }}">
-                    {{ e.nome }}
-                </label>
-            {% endfor %}
-        </div>
-
-        <button type="submit" class="btn-primary">Publicar</button>
-
     </form>
 </div>
 
@@ -75,5 +459,4 @@ input.addEventListener("change", function () {
     reader.readAsDataURL(file);
 });
 </script>
-
 {% endblock %}

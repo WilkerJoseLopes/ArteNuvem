@@ -1,0 +1,229 @@
+/* Map Toggle Component Container */
+.map-card-wrapper {
+  perspective: 1500px;
+  width: 100%;
+  height: 500px;
+  max-height: 70vh;
+  position: relative;
+  overflow: visible;
+  margin-bottom: 1rem;
+}
+
+/* Flipper block that performs the rotation */
+.map-card-flipper {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+  position: relative;
+  border-radius: 0.8rem;
+  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
+}
+
+/* Flip state triggered by JS class */
+.map-card-wrapper.flipped .map-card-flipper {
+  transform: rotateY(180deg);
+}
+
+/* Base side styles (front and back) */
+.map-card-front,
+.map-card-back {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background-color: var(--card, #ffffff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+}
+
+/* Front Side containing image */
+.map-card-front {
+  z-index: 2;
+  transform: rotateY(0deg);
+}
+
+.map-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #0b0c10; /* Clean dark background for images */
+  display: block;
+}
+
+/* Back Side containing Map */
+.map-card-back {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+/* Map render area */
+.map-viewport {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  background-color: var(--bg-elevated, #f7f9fa);
+}
+
+/* Ensure dynamic iframe sits nicely */
+.map-viewport iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Loading Spinner Overlay */
+.map-loading-spinner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.85); /* Premium translucent dark overlay */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: opacity 0.4s ease;
+  backdrop-filter: blur(4px);
+}
+
+.map-loading-spinner.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spinner {
+  border: 3.5px solid rgba(255, 255, 255, 0.15);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border-left-color: #3b82f6; /* Modern Blue */
+  animation: map-spin 0.8s cubic-bezier(0.5, 0.1, 0.1, 1) infinite;
+  margin-bottom: 0.85rem;
+}
+
+@keyframes map-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Map Address Overlay Bar */
+.map-overlay-info {
+  background-color: var(--card, #ffffff);
+  border-top: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  padding: 0.95rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.map-address-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.map-marker-icon {
+  font-size: 1.2rem;
+  margin-top: 0.1rem;
+}
+
+.map-address-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text, #1e293b);
+  line-height: 1.4;
+}
+
+.map-city-country {
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+  display: inline-block;
+  margin-top: 0.15rem;
+}
+
+/* Premium Google Maps Action Button */
+.btn-open-gmaps {
+  background-color: #4285F4; /* Official Google Blue */
+  color: #ffffff !important;
+  border: none;
+  padding: 0.55rem 1.15rem;
+  border-radius: 0.45rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(66, 133, 244, 0.2);
+  white-space: nowrap;
+}
+
+.btn-open-gmaps:hover {
+  background-color: #3370d4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(66, 133, 244, 0.35);
+}
+
+.btn-open-gmaps:active {
+  transform: translateY(0);
+}
+
+/* Elegant Location Toggle Button */
+.btn-location-toggle {
+  background-color: var(--primary, #3b82f6);
+  color: #ffffff !important;
+  border: none;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  text-decoration: none;
+}
+
+.btn-location-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+}
+
+.btn-location-toggle.active {
+  background-color: #10b981; /* Premium Green */
+}
+
+/* Responsive adjust for mobile */
+@media (max-width: 600px) {
+  .map-card-wrapper {
+    height: 380px;
+  }
+  .map-overlay-info {
+    padding: 0.75rem 1rem;
+    gap: 0.8rem;
+  }
+  .btn-open-gmaps {
+    width: 100%;
+    text-align: center;
+  }
+}

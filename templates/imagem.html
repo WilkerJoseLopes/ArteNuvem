@@ -1,139 +1,190 @@
 {% extends "base.html" %}
+{% block title %}{{ imagem.titulo }} — Detalhes{% endblock %}
+
 {% block content %}
+<!-- Styles and Scripts for Map Component -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/map_toggle.css') }}">
+<script src="{{ url_for('static', filename='js/map_toggle.js') }}"></script>
 
-<div class="imagem-detalhe grid" style="grid-template-columns: 1fr 360px; gap: 1.25rem; align-items:start;">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" x-data="{ showLightbox: false }">
 
-  <!-- COLUNA: IMAGEM -->
-  <div class="imagem-box card" style="padding:0;">
-    <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}" style="width:100%; display:block; border-radius:0.5rem 0.5rem 0 0; object-fit:contain; max-height:75vh;">
-    <div class="card-body">
-      <h2 style="margin:0 0 0.5rem 0;">{{ imagem.titulo }}</h2>
+  <!-- COLUNA ESQUERDA: IMAGEM PRINCIPAL & CONTEXTO (8/12) -->
+  <div class="lg:col-span-8 space-y-6">
+    
+    <!-- Title & Toggle Location Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-brand-card/30 p-5 rounded-2xl border border-white/5">
+      <div>
+        <span class="text-[10px] font-extrabold uppercase tracking-widest text-brand-secondary">
+          {{ imagem.categoria_texto or 'Galeria' }}
+        </span>
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white mt-1">{{ imagem.titulo }}</h1>
+      </div>
+      
+      {% if imagem.localizacao %}
+        <button id="locationToggleBtn" class="btn-location-toggle shadow-lg flex-shrink-0" data-image-id="{{ imagem.id }}">
+          <i data-lucide="map-pin" class="w-4 h-4"></i>
+          <span>Mostrar mapa</span>
+        </button>
+      {% endif %}
+    </div>
 
+    <!-- Media Area (Swaps between image and map) -->
+    <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-black/40">
+      {% if imagem.localizacao %}
+        {% include "components/map_toggle.html" %}
+      {% else %}
+        <div class="w-full flex items-center justify-center p-2 min-h-[300px] max-h-[75vh]">
+          <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}" class="max-w-full max-h-[70vh] rounded-xl object-contain cursor-zoom-in hover:opacity-95 transition-opacity" @click="showLightbox = true">
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Details Box (Description & Tags) -->
+    <div class="glass-panel p-6 rounded-2xl space-y-6">
       {% if imagem.tags %}
-        <div style="margin-bottom:0.5rem;">
+        <div class="flex flex-wrap gap-2">
           {% for t in (imagem.tags.split(',') if imagem.tags else []) %}
-            <span class="badge" style="margin-right:0.35rem;">{{ t.strip() }}</span>
+            <span class="text-xs font-bold px-3 py-1 rounded-full bg-white/5 border border-white/10 hover:border-brand-accent transition-colors cursor-pointer text-muted hover:text-white">
+              #{{ t.strip() }}
+            </span>
           {% endfor %}
         </div>
       {% endif %}
 
-      <p class="small">Publicado: {{ imagem.data_upload.strftime('%Y-%m-%d %H:%M') if imagem.data_upload else '' }}</p>
+      {% if imagem.descricao %}
+        <div class="space-y-2">
+          <h3 class="text-xs font-extrabold uppercase tracking-widest text-muted">Descrição da Obra</h3>
+          <p class="text-sm font-light leading-relaxed text-gray-200 font-inter">
+            {{ imagem.descricao }}
+          </p>
+        </div>
+      {% endif %}
 
-      <div style="margin-top:1rem;">
-        <a class="btn-link" href="{{ url_for('index') }}">← Voltar</a>
+      <div class="flex items-center gap-4 text-xs text-muted border-t border-white/5 pt-4">
+        <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> Publicado em: {{ imagem.data_upload.strftime('%d %b %Y, %H:%M') if imagem.data_upload else 'N/A' }}</span>
       </div>
     </div>
   </div>
 
-  <!-- COLUNA: SIDEBAR INFO / ACTIONS -->
-  <aside>
-    <!-- Autor -->
-    <div class="card" style="padding:0.75rem; display:flex; gap:0.75rem; align-items:center;">
-      <img src="{{ autor.foto_url if autor and autor.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:48px;height:48px;border-radius:50%;">
-      <div>
-        <a href="{{ url_for('perfil', imagem_id=autor.id if autor else 0) }}" style="text-decoration:none; color:inherit;">
-          <div style="font-weight:700;">{{ autor.nome if autor else 'Anónimo' }}</div>
-        </a>
-        <div class="small">ID: {{ autor.id if autor else '—' }}</div>
+  <!-- COLUNA DIREITA: SIDEBAR SOCIAL & INTERAÇÕES (4/12) -->
+  <aside class="lg:col-span-4 space-y-6">
+    
+    <!-- Autor Profile Card -->
+    <div class="glass-panel p-5 rounded-2xl flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="{{ autor.foto_url if autor and autor.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="w-12 h-12 rounded-full object-cover border-2 border-brand-accent/50 shadow-lg">
+        <div class="min-w-0">
+          <span class="text-[10px] font-bold text-muted uppercase tracking-wider">Artista</span>
+          <a href="{{ url_for('perfil', imagem_id=autor.id if autor else 0) }}" class="block font-bold text-sm text-white hover:text-brand-secondary transition-colors truncate">
+            {{ autor.nome if autor else 'Anónimo' }}
+          </a>
+        </div>
       </div>
+      
+      <a href="{{ url_for('perfil', imagem_id=autor.id if autor else 0) }}" class="text-xs font-bold text-brand-accent hover:underline flex items-center gap-0.5">
+        <span>Ver Perfil</span>
+        <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+      </a>
     </div>
 
-    <!-- Categoria / Ações -->
-    <div class="card" style="margin-top:0.8rem; padding:0.75rem;">
-      {% if imagem.categoria_texto %}
-      <div style="margin-bottom:0.5rem;">Categoria: <strong>{{ imagem.categoria_texto }}</strong></div>
-      {% endif %}
-
-      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+    <!-- Actions & Likes Card -->
+    <div class="glass-panel p-5 rounded-2xl space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        
+        <!-- Premium Like button -->
         <button id="likeBtn"
-                class="like-btn {% if user_liked %}liked{% endif %}"
+                class="flex items-center gap-2 border px-5 py-2.5 rounded-full font-bold text-xs cursor-pointer shadow-md select-none transition-all duration-300 {% if user_liked %}bg-rose-600/10 border-rose-500/30 text-rose-500 hover:bg-rose-600 hover:text-white{% else %}bg-white/5 border-white/10 text-brand-text hover:bg-white/10{% endif %}"
                 data-imagem-id="{{ imagem.id }}"
                 aria-pressed="{{ 'true' if user_liked else 'false' }}">
-          <span id="likeHeart">❤</span> <span id="likeCount">{{ likes }}</span>
+          <span id="likeHeart" class="text-sm">❤</span> 
+          <span>Gostar</span>
+          <span id="likeCount" class="bg-white/10 px-2 py-0.5 rounded-full text-[10px]">{{ likes }}</span>
         </button>
 
         {% if current_user and (current_user.id == imagem.id_utilizador or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
-        <form action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" method="post" style="margin:0;">
-          <button type="submit" class="icon-btn" onclick="return confirm('Apagar esta imagem?');">Apagar</button>
+        <form action="{{ url_for('apagar_imagem', imagem_id=imagem.id) }}" method="post" class="m-0">
+          <button type="submit" class="flex items-center gap-1.5 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-white px-4 py-2.5 rounded-full font-bold text-xs cursor-pointer transition-colors" onclick="return confirm('Tem a certeza de que deseja apagar esta imagem?');">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Apagar</span>
+          </button>
         </form>
         {% endif %}
       </div>
 
-      <div class="small">Link público: <a href="{{ imagem.caminho_armazenamento }}" target="_blank" style="color:inherit; text-decoration:underline;">Abrir imagem</a></div>
-    </div>
-
-    <!-- Comentários (preview) -->
-    <div class="card" style="margin-top:0.8rem; padding:0.75rem;">
-      <h4 style="margin:0 0 0.5rem 0;">Comentários ({{ comentarios|length }})</h4>
-      <div style="max-height:220px; overflow:auto;">
-        {% for c, u in comentarios[:5] %}
-        <div style="display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.5rem;">
-          <img src="{{ u.foto_url if u and u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:34px;height:34px;border-radius:50%; object-fit:cover;">
-          <div>
-            <a href="{{ url_for('perfil', imagem_id=u.id) }}"><strong>{{ u.nome if u else 'Anónimo' }}</strong></a>
-            <div class="small" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.texto }}</div>
+      {% if imagem.localizacao %}
+        <div class="text-[11px] text-muted flex flex-col gap-1 border-t border-white/5 pt-3">
+          <div class="flex items-start gap-1 mt-1">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-brand-secondary mt-0.5"></i>
+            <span>
+              <strong>Localizado em:</strong> {{ imagem.localizacao.address }}
+              {% if imagem.localizacao.city or imagem.localizacao.country %}
+                <br>
+                <small class="text-muted">({% if imagem.localizacao.city %}{{ imagem.localizacao.city }}{% endif %}{% if imagem.localizacao.city and imagem.localizacao.country %}, {% endif %}{% if imagem.localizacao.country %}{{ imagem.localizacao.country }}{% endif %})</small>
+              {% endif %}
+            </span>
           </div>
         </div>
-        {% else %}
-        <p class="small">Sem comentários ainda.</p>
-        {% endfor %}
-      </div>
-      <div style="margin-top:0.5rem;">
-        <a href="#comments-full" class="btn-link">Ver todos / Comentar</a>
-      </div>
+      {% endif %}
     </div>
 
-  </aside>
-</div>
-
-<!-- FULL COMMENTS SECTION -->
-<hr style="margin:1.25rem 0;">
-<div id="comments-full" class="comentarios">
-  <h3>Comentários ({{ comentarios|length }})</h3>
-
-  {% if current_user %}
-  <form action="{{ url_for('comentario') }}" method="post" class="form-comentario" style="margin-bottom:1rem;">
-    <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-    <div style="display:flex; gap:0.6rem; align-items:flex-start;">
-      <img src="{{ current_user.foto_url if current_user and current_user.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="user-avatar" style="width:40px;height:40px;border-radius:50%; object-fit:cover;">
-      <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" style="flex:1; padding:0.6rem; border-radius:0.5rem; border:1px solid var(--border);" autofocus>{{ pending_text or "" }}</textarea>
-    </div>
-    <div style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
-      <button type="submit" class="btn">Comentar</button>
-      <div class="small" style="color:var(--muted);">Máx. 140 caracteres</div>
-    </div>
-  </form>
-  {% else %}
-  <p>Faz login para comentar.</p>
-  {% endif %}
-
-  <div class="comentarios-lista">
-    {% for c, u in comentarios %}
-    <div class="comentario" style="display:flex; gap:0.8rem; align-items:flex-start; padding:0.6rem 0; border-bottom:1px solid rgba(0,0,0,0.04);">
-      <img src="{{ u.foto_url if u and u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="avatar-sm" style="width:44px;height:44px;border-radius:50%; object-fit:cover;">
-      <div style="flex:1;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <a href="{{ url_for('perfil', imagem_id=(u.id if u else 0)) }}"><strong>{{ u.nome if u else 'Anónimo' }}</strong></a>
-            <div class="small" style="display:inline-block; margin-left:0.5rem; color:var(--muted);">{{ c.data.strftime('%Y-%m-%d %H:%M') if c.data else '' }}</div>
-          </div>
-          <div>
+    <!-- Comments Box (Threads-Style Widget) -->
+    <div class="glass-panel p-5 rounded-2xl flex flex-col max-h-[500px]">
+      <h3 class="font-extrabold text-sm tracking-wide text-white border-b border-white/5 pb-3">Comentários ({{ comentarios|length }})</h3>
+      
+      <!-- List of comments (scrollable area) -->
+      <div class="flex-1 overflow-y-auto pr-1 my-4 space-y-4 divide-y divide-white/5">
+        {% for c, u in comentarios %}
+        <div class="flex items-start gap-3 pt-3 first:pt-0">
+          <img src="{{ u.foto_url if u and u.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="w-8 h-8 rounded-full object-cover border border-white/10 flex-shrink-0">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2">
+              <a href="{{ url_for('perfil', imagem_id=u.id) }}" class="text-xs font-bold text-white hover:text-brand-secondary transition-colors truncate">
+                {{ u.nome if u else 'Anónimo' }}
+              </a>
+              <span class="text-[9px] text-muted">{{ c.data.strftime('%d/%m %H:%M') if c.data else '' }}</span>
+            </div>
+            <p class="text-xs text-gray-200 mt-1 leading-normal font-inter">{{ c.texto }}</p>
+            
             {% if current_user and (current_user.id == (u.id if u else 0) or (current_user.email and current_user.email|lower in ADMIN_EMAILS)) %}
-            <form action="{{ url_for('apagar_comentario') }}" method="post" style="display:inline;">
-              <input type="hidden" name="comentario_id" value="{{ c.id }}">
-              <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
-              <button type="submit" class="btn btn-link" onclick="return confirm('Apagar comentário?');">Apagar</button>
-            </form>
+            <div class="mt-1">
+              <form action="{{ url_for('apagar_comentario') }}" method="post" class="m-0">
+                <input type="hidden" name="comentario_id" value="{{ c.id }}">
+                <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+                <button type="submit" class="text-[9px] font-bold text-rose-400 hover:text-rose-300 hover:underline bg-transparent border-0 cursor-pointer p-0" onclick="return confirm('Deseja apagar este comentário?');">Apagar</button>
+              </form>
+            </div>
             {% endif %}
           </div>
         </div>
-        <p style="margin:0.4rem 0 0 0;">{{ c.texto }}</p>
+        {% else %}
+        <div class="py-8 text-center text-xs text-muted">Ainda não há comentários nesta obra. Seja o primeiro a comentar!</div>
+        {% endfor %}
       </div>
+
+      <!-- Add Comment Form -->
+      <div class="border-t border-white/5 pt-3">
+        {% if current_user %}
+        <form action="{{ url_for('comentario') }}" method="post" class="space-y-3">
+          <input type="hidden" name="imagem_id" value="{{ imagem.id }}">
+          <div class="flex items-start gap-2.5">
+            <img src="{{ current_user.foto_url if current_user and current_user.foto_url else url_for('static', filename='img/avatar_default.png') }}" class="w-7 h-7 rounded-full object-cover border border-white/10 flex-shrink-0">
+            <textarea name="texto" placeholder="Escreve um comentário..." required maxlength="140" class="flex-1 w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs h-16 resize-none focus:border-brand-accent/50 outline-none">{{ pending_text or "" }}</textarea>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-muted">Máx. 140 carateres</span>
+            <button type="submit" class="bg-brand-accent hover:bg-brand-accentHover text-white font-bold text-xs px-4 py-1.5 rounded-full shadow transition-all">Enviar</button>
+          </div>
+        </form>
+        {% else %}
+        <div class="text-center text-xs text-muted py-2">
+          Faça <a href="{{ url_for('login') }}" class="text-brand-accent hover:underline font-bold">login com Google</a> para participar no debate.
+        </div>
+        {% endif %}
+      </div>
+
     </div>
-    {% else %}
-    <p>Sem comentários ainda.</p>
-    {% endfor %}
-  </div>
+
+  </aside>
 </div>
 
 <script>
@@ -162,9 +213,18 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         const liked = data.status === "liked";
         const count = data.likes ?? 0;
-        likeBtn.classList.toggle("liked", liked);
-        document.getElementById("likeCount").textContent = count;
+        
         likeBtn.setAttribute("aria-pressed", liked ? "true" : "false");
+        document.getElementById("likeCount").textContent = count;
+        
+        // Dynamic class updates
+        if (liked) {
+          likeBtn.classList.remove("bg-white/5", "border-white/10", "text-brand-text");
+          likeBtn.classList.add("bg-rose-600/10", "border-rose-500/30", "text-rose-500", "hover:bg-rose-600", "hover:text-white");
+        } else {
+          likeBtn.classList.add("bg-white/5", "border-white/10", "text-brand-text");
+          likeBtn.classList.remove("bg-rose-600/10", "border-rose-500/30", "text-rose-500", "hover:bg-rose-600", "hover:text-white");
+        }
       })
       .catch(err => {
         console.error(err);
@@ -177,20 +237,108 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     });
   }
-
-  const style = document.createElement('style');
-  style.innerHTML = `
-    .like-btn { padding:0.35rem 0.6rem; border-radius:0.45rem; border:1px solid var(--border); background:transparent; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem; }
-    .like-btn.liked { background: rgba(255,0,0,0.08); border-color: rgba(255,0,0,0.2); }
-    .like-btn:hover { transform: translateY(-1px); }
-    .icon-btn { background:transparent; border:0; color:var(--muted); cursor:pointer; padding:0.2rem 0.4rem; }
-    .avatar-sm { object-fit:cover; }
-    .card { background:var(--card); border-radius:0.6rem; padding:1rem; box-shadow:var(--shadow); }
-    .badge { background:var(--muted-bg); padding:0.2rem 0.45rem; border-radius:0.35rem; font-size:0.85rem; }
-  `;
-  document.head.appendChild(style);
-
 });
 </script>
 
+<!-- Lightbox Modal -->
+<div x-show="showLightbox" 
+     x-data="{ 
+       scale: 1, 
+       panX: 0, 
+       panY: 0, 
+       isDragging: false, 
+       startX: 0, 
+       startY: 0,
+       reset() {
+         this.scale = 1;
+         this.panX = 0;
+         this.panY = 0;
+         this.isDragging = false;
+       },
+       zoom(dir) {
+         if (dir === 'in') {
+           this.scale = Math.min(5, this.scale + 0.25);
+         } else if (dir === 'out') {
+           this.scale = Math.max(1, this.scale - 0.25);
+           if (this.scale === 1) {
+             this.panX = 0;
+             this.panY = 0;
+           }
+         }
+       },
+       startDrag(e) {
+         if (this.scale <= 1) return;
+         this.isDragging = true;
+         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+         this.startX = clientX - this.panX;
+         this.startY = clientY - this.panY;
+       },
+       drag(e) {
+         if (!this.isDragging) return;
+         e.preventDefault();
+         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+         this.panX = clientX - this.startX;
+         this.panY = clientY - this.startY;
+       },
+       stopDrag() {
+         this.isDragging = false;
+       }
+     }"
+     x-init="$watch('showLightbox', value => { if (!value) reset(); })"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @keydown.escape.window="showLightbox = false"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 select-none" 
+     style="display: none;">
+     
+  <!-- Close Area (clicking background closes) -->
+  <div class="absolute inset-0 cursor-zoom-out z-0" @click="showLightbox = false"></div>
+  
+  <!-- Close Button -->
+  <button class="absolute top-4 right-4 text-white/70 hover:text-white transition-colors p-2 bg-white/10 hover:bg-white/20 rounded-full z-20" @click="showLightbox = false" title="Fechar">
+    <i data-lucide="x" class="w-6 h-6"></i>
+  </button>
+  
+  <!-- Floating Control Bar -->
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#17181c]/60 border border-white/10 px-4 py-2 rounded-full shadow-2xl backdrop-blur-md z-20">
+    <button @click="zoom('out')" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors" title="Zoom Out">
+      <i data-lucide="zoom-out" class="w-4 h-4"></i>
+    </button>
+    <span class="text-xs font-bold text-white/80 min-w-[40px] text-center" x-text="Math.round(scale * 100) + '%'"></span>
+    <button @click="zoom('in')" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors" title="Zoom In">
+      <i data-lucide="zoom-in" class="w-4 h-4"></i>
+    </button>
+    <div class="h-4 w-px bg-white/10 mx-1"></div>
+    <button @click="reset()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors" title="Repor">
+      <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+    </button>
+  </div>
+
+  <!-- Image Container -->
+  <div class="relative max-w-full max-h-[90vh] overflow-hidden rounded-xl flex items-center justify-center z-10">
+    <img src="{{ imagem.caminho_armazenamento }}" 
+         alt="{{ imagem.titulo }}" 
+         class="max-w-full max-h-[90vh] rounded-xl object-contain shadow-2xl transition-all select-none duration-100 ease-out"
+         :style="`transform: translate(${panX}px, ${panY}px) scale(${scale}); cursor: ${scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in'}`"
+         @mousedown="startDrag"
+         @mousemove="drag"
+         @mouseup="stopDrag"
+         @mouseleave="stopDrag"
+         @touchstart="startDrag"
+         @touchmove="drag"
+         @touchend="stopDrag"
+         @wheel.prevent="zoom($event.deltaY < 0 ? 'in' : 'out')"
+         @dblclick="scale === 1 ? scale = 2 : reset()"
+         x-show="showLightbox"
+         x-transition:enter="transition ease-out duration-300 transform scale-95"
+         x-transition:enter-start="scale-95"
+         x-transition:enter-end="scale-100">
+  </div>
+</div>
 {% endblock %}

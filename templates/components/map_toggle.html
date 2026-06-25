@@ -1,0 +1,60 @@
+<div class="map-card-wrapper" id="mapToggleWrapper-{{ imagem.id }}" 
+     data-image-id="{{ imagem.id }}" 
+     data-lat="{{ imagem.localizacao.latitude or '' }}" 
+     data-lng="{{ imagem.localizacao.longitude or '' }}" 
+     data-address="{{ imagem.localizacao.address or '' }}" 
+     data-city="{{ imagem.localizacao.city or '' }}" 
+     data-country="{{ imagem.localizacao.country or '' }}">
+    <div class="map-card-flipper">
+        <!-- Face frontal: Imagem da publicação -->
+        <div class="map-card-front">
+            <img src="{{ imagem.caminho_armazenamento }}" alt="{{ imagem.titulo }}" class="map-card-image cursor-zoom-in hover:opacity-95 transition-opacity" id="mapCardImage-{{ imagem.id }}" @click="showLightbox = true">
+        </div>
+        
+        <!-- Face traseira: Mapa e Metadados -->
+        <div class="map-card-back">
+            <!-- Spinner de carregamento -->
+            <div class="map-loading-spinner" id="mapSpinner-{{ imagem.id }}">
+                <div class="spinner"></div>
+                <span>A carregar mapa...</span>
+            </div>
+            
+            <!-- Div para renderizar o Leaflet -->
+            <div class="map-viewport" id="mapViewport-{{ imagem.id }}"></div>
+            
+            <!-- Barra de informações e link externo -->
+            <div class="map-overlay-info">
+                <div class="map-address-container">
+                    <span class="map-marker-icon">📍</span>
+                    <p class="map-address-text">
+                        <strong>{{ imagem.localizacao.address }}</strong>
+                        {% if imagem.localizacao.city or imagem.localizacao.country %}
+                            <br>
+                            <small class="map-city-country">
+                                {% if imagem.localizacao.city %}{{ imagem.localizacao.city }}{% endif %}
+                                {% if imagem.localizacao.city and imagem.localizacao.country %}, {% endif %}
+                                {% if imagem.localizacao.country %}{{ imagem.localizacao.country }}{% endif %}
+                            </small>
+                        {% endif %}
+                    </p>
+                </div>
+                
+                {% if imagem.localizacao.latitude and imagem.localizacao.longitude %}
+                <a href="https://www.google.com/maps/search/?api=1&query={{ imagem.localizacao.latitude }},{{ imagem.localizacao.longitude }}" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   class="btn-open-gmaps">
+                   Abrir no Google Maps
+                </a>
+                {% else %}
+                <a href="https://www.google.com/maps/search/?api=1&query={{ imagem.localizacao.address|urlencode }}" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   class="btn-open-gmaps">
+                   Abrir no Google Maps
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

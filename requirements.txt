@@ -13,4 +13,4 @@ sqlalchemy
 supabase
 cloudconvert
 requests
-
+resend

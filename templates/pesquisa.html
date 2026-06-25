@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Pesquisa avançada{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-heading">
+    <div>
+      <span class="eyebrow">Galeria</span>
+      <h1>Pesquisa avançada</h1>
+    </div>
+    <a class="btn-link" href="{{ url_for('api_search') }}" target="_blank">API JSON</a>
+  </div>
+
+  <form id="advancedSearch" class="search-panel" method="get">
+    <input type="text" name="q" placeholder="Título, descrição, tags ou autor" value="{{ filtros.get('q', '') }}">
+    <select name="categoria">
+      <option value="">Todas as categorias</option>
+      {% for c in categorias %}
+        <option value="{{ c.id }}" {% if filtros.get('categoria')|int == c.id %}selected{% endif %}>{{ c.nome }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="autor" placeholder="Autor" value="{{ filtros.get('autor', '') }}">
+    <input type="text" name="tags" placeholder="Tags separadas por vírgula" value="{{ filtros.get('tags', '') }}">
+    <input type="text" name="cidade" placeholder="Cidade" value="{{ filtros.get('cidade', '') }}">
+    <input type="date" name="data_inicio" value="{{ filtros.get('data_inicio', '') }}">
+    <input type="date" name="data_fim" value="{{ filtros.get('data_fim', '') }}">
+    <select name="ordenar">
+      <option value="mais_recentes" {% if filtros.get('ordenar') == 'mais_recentes' %}selected{% endif %}>Mais recentes</option>
+      <option value="mais_antigas" {% if filtros.get('ordenar') == 'mais_antigas' %}selected{% endif %}>Mais antigas</option>
+      <option value="mais_curtidas" {% if filtros.get('ordenar') == 'mais_curtidas' %}selected{% endif %}>Mais curtidas</option>
+      <option value="menos_curtidas" {% if filtros.get('ordenar') == 'menos_curtidas' %}selected{% endif %}>Menos curtidas</option>
+    </select>
+    <button type="submit">Pesquisar</button>
+  </form>
+
+  <div id="searchStatus" class="small">{{ imagens|length }} resultados carregados.</div>
+  <section id="searchResults" class="grid" style="margin-top:1rem;">
+    {% for img in imagens %}
+      <article class="card">
+        <a href="{{ url_for('imagem_detalhe', imagem_id=img.id) }}"><img src="{{ img.caminho_armazenamento }}" alt="{{ img.titulo }}" loading="lazy"></a>
+        <div class="card-body">
+          <h3>{{ img.titulo }}</h3>
+          {% if img.categoria_texto %}<span class="badge">{{ img.categoria_texto }}</span>{% endif %}
+          {% if img.localizacao and img.localizacao.city %}<p class="small">{{ img.localizacao.city }}</p>{% endif %}
+        </div>
+      </article>
+    {% else %}
+      <p>Nenhuma imagem encontrada.</p>
+    {% endfor %}
+  </section>
+</div>
+
+<script>
+const form = document.getElementById("advancedSearch");
+const results = document.getElementById("searchResults");
+const statusEl = document.getElementById("searchStatus");
+const esc = value => String(value || "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+function renderResult(img) {
+  return `<article class="card">
+    <a href="/imagem/${img.id}"><img src="${esc(img.url)}" alt="${esc(img.titulo)}" loading="lazy"></a>
+    <div class="card-body">
+      <h3>${esc(img.titulo)}</h3>
+      ${img.categoria ? `<span class="badge">${esc(img.categoria)}</span>` : ""}
+      ${img.localizacao && img.localizacao.city ? `<p class="small">${esc(img.localizacao.city)}</p>` : ""}
+    </div>
+  </article>`;
+}
+form.addEventListener("input", () => {
+  clearTimeout(window.__searchTimer);
+  window.__searchTimer = setTimeout(async () => {
+    const params = new URLSearchParams(new FormData(form));
+    const response = await fetch(`/api/search?${params.toString()}`);
+    const data = await response.json();
+    results.innerHTML = data.imagens.length ? data.imagens.map(renderResult).join("") : "<p>Nenhuma imagem encontrada.</p>";
+    statusEl.textContent = `${data.total} resultados encontrados.`;
+  }, 250);
+});
+</script>
+{% endblock %}

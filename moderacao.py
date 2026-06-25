@@ -4,6 +4,7 @@ import unicodedata
 import requests
 import json
 import logging
+import hashlib
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -63,6 +64,45 @@ def _public_referer(referer=None):
     if value and not value.endswith("/"):
         value += "/"
     return value
+
+
+def _fallback_sugestao_obra(ideia: str, motivo=None) -> dict:
+    texto = (ideia or "").strip()
+    palavras = re.findall(r"[A-Za-zÀ-ÿ0-9]+", texto)
+    stopwords = {
+        "uma", "um", "uns", "umas", "com", "para", "por", "que", "dos", "das",
+        "do", "da", "de", "em", "no", "na", "nos", "nas", "sobre", "esta",
+        "este", "essa", "esse", "obra", "arte", "pintura", "desenho", "foto",
+    }
+    chave = [
+        p for p in palavras
+        if len(p) > 2 and p.lower() not in stopwords
+    ][:4]
+    tema = " ".join(chave) if chave else (texto[:45] or "a imaginação")
+    tema_titulo = tema.title()
+    seed = int(hashlib.sha256(texto.encode("utf-8")).hexdigest()[:8], 16) if texto else 0
+
+    titulos = [
+        "Ecos de {tema}",
+        "Luz Sobre {tema}",
+        "Fragmentos de {tema}",
+        "Entre Sombras e {tema}",
+        "Respiração de {tema}",
+    ]
+    descricoes = [
+        "Esta obra transforma {tema} numa narrativa visual sensível, onde cada detalhe parece guardar uma memória própria. A composição convida o olhar a entrar devagar e a descobrir emoção, contraste e movimento.",
+        "Inspirada em {tema}, a peça procura equilibrar intensidade e delicadeza num registo profundamente expressivo. As formas e as cores sugerem uma história aberta, pronta a ser completada por quem a observa.",
+        "A partir de {tema}, nasce uma imagem marcada por atmosfera, ritmo e presença. A obra propõe um encontro entre imaginação e sentimento, deixando espaço para múltiplas interpretações.",
+    ]
+
+    resultado = {
+        "titulo": titulos[seed % len(titulos)].format(tema=tema_titulo),
+        "descricao": descricoes[(seed // 7) % len(descricoes)].format(tema=tema),
+        "fallback": True,
+    }
+    if motivo:
+        logger.warning("A usar sugestao local porque Gemini falhou: %s", motivo)
+    return resultado
 
 
 def _normalizar_e_deobfuscar(texto: str) -> str:
@@ -194,7 +234,7 @@ def gerar_sugestao_obra(ideia: str, referer=None) -> dict:
     load_dotenv()
     api_key = _get_gemini_api_key()
     if not api_key:
-        return {"error": "API Key Gemini nao configurada. Define gemini_moder ou GEMINI_API_KEY no Render."}
+        return _fallback_sugestao_obra(ideia, "API Key Gemini nao configurada")
 
     prompt = (
         "Es um assistente de IA altamente criativo integrado na plataforma de arte ArteNuvem.\n"
@@ -276,23 +316,17 @@ def gerar_sugestao_obra(ideia: str, referer=None) -> dict:
             if last_status in (429, 500, 502, 503, 504):
                 continue
             if last_status == 403:
-                return {
-                    "error": (
-                        "A chave Gemini foi recusada pelo Google (HTTP 403). "
-                        "Verifica no Google AI Studio/Cloud se a key tem acesso ao Gemini "
-                        "e se as restricoes permitem chamadas a partir de https://artenuvem.onrender.com."
-                    )
-                }
-            return {"error": f"Erro de comunicacao com o servico de IA (HTTP {last_status})."}
+                return _fallback_sugestao_obra(ideia, f"Gemini HTTP 403: {last_detail}")
+            return _fallback_sugestao_obra(ideia, f"Gemini HTTP {last_status}: {last_detail}")
 
         if last_status in (429, 503):
-            return {"error": "O Gemini esta temporariamente ocupado ou em limite de quota. Tenta novamente dentro de instantes."}
+            return _fallback_sugestao_obra(ideia, f"Gemini temporariamente indisponivel: HTTP {last_status}")
         if last_status == 200:
-            return {"error": "A IA respondeu, mas nao devolveu uma sugestao valida. Tenta novamente."}
-        return {"error": f"Erro de comunicacao com o servico de IA (HTTP {last_status})."}
+            return _fallback_sugestao_obra(ideia, "Gemini devolveu resposta invalida")
+        return _fallback_sugestao_obra(ideia, f"Gemini HTTP {last_status}")
     except Exception as e:
         logger.exception("Erro ao contactar Gemini")
-        return {"error": f"Ocorreu um erro ao contactar a IA: {e}"}
+        return _fallback_sugestao_obra(ideia, str(e))
 
 
 # Teste local

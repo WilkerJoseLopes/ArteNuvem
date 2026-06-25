@@ -2822,7 +2822,7 @@ def api_sugestao_ia():
     if len(prompt) > 500:
         return jsonify({"error": "A ideia é demasiado longa (máx. 500 caracteres)."}), 400
         
-    resultado = gerar_sugestao_obra(prompt)
+    resultado = gerar_sugestao_obra(prompt, referer=request.host_url)
     if "error" in resultado:
         return jsonify({"error": resultado["error"]}), 500
         

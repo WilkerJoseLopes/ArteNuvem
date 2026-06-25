@@ -10,6 +10,60 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+GEMINI_DEFAULT_MODEL = "gemini-2.5-flash-lite"
+
+
+def _get_gemini_api_key():
+    for env_name in ("gemini_moder", "GEMINI_MODER", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
+        value = os.environ.get(env_name)
+        if value:
+            return value.strip().strip('"').strip("'")
+    return None
+
+
+def _get_gemini_model():
+    return (os.environ.get("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL).strip()
+
+
+def _get_gemini_models():
+    configured = os.environ.get("GEMINI_MODEL")
+    if configured:
+        return [model.strip() for model in configured.split(",") if model.strip()]
+    return [GEMINI_DEFAULT_MODEL, "gemini-2.5-flash"]
+
+
+def _extract_google_error(response):
+    try:
+        payload = response.json()
+    except ValueError:
+        text = (response.text or "").strip()
+        return text[:500] if text else "Sem detalhe devolvido pelo Google."
+
+    error = payload.get("error") if isinstance(payload, dict) else None
+    if isinstance(error, dict):
+        status = error.get("status")
+        message = error.get("message")
+        if status and message:
+            return f"{status}: {message}"
+        if message:
+            return message
+    return json.dumps(payload, ensure_ascii=False)[:500]
+
+
+def _public_referer(referer=None):
+    value = (
+        referer
+        or os.environ.get("GEMINI_HTTP_REFERER")
+        or os.environ.get("APP_PUBLIC_URL")
+        or os.environ.get("RENDER_EXTERNAL_URL")
+    )
+    if not value:
+        return None
+    value = value.strip()
+    if value and not value.endswith("/"):
+        value += "/"
+    return value
+
 
 def _normalizar_e_deobfuscar(texto: str) -> str:
     if not texto:
@@ -132,34 +186,39 @@ def avaliar_comentario(texto: str) -> dict:
     }
 
 
-def gerar_sugestao_obra(ideia: str) -> dict:
+def gerar_sugestao_obra(ideia: str, referer=None) -> dict:
     """
-    Usa o Gemini para sugerir um título e uma descrição artística com base
+    Usa o Gemini para sugerir um titulo e uma descricao artistica com base
     num rascunho, tema ou ideia do utilizador.
     """
     load_dotenv()
-    api_key = os.environ.get("gemini_moder")
+    api_key = _get_gemini_api_key()
     if not api_key:
-        return {"error": "API Key não configurada no ficheiro .env."}
+        return {"error": "API Key Gemini nao configurada. Define gemini_moder ou GEMINI_API_KEY no Render."}
 
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
-    
     prompt = (
-        "És um assistente de IA altamente criativo integrado na plataforma de arte ArteNuvem.\n"
+        "Es um assistente de IA altamente criativo integrado na plataforma de arte ArteNuvem.\n"
         "O utilizador quer publicar uma obra mas tem falta de ideias. Ele forneceu o seguinte tema, rascunho ou ideia:\n"
         f"\"{ideia}\"\n\n"
-        "Gera um título chamativo e criativo para a obra e uma descrição poética, artística e envolvente (com cerca de 2 a 4 frases, em português de Portugal).\n\n"
-        "Responde APENAS com um objeto JSON válido, sem qualquer texto adicional ou blocos de código. O formato do JSON deve ser exatamente:\n"
+        "Gera um titulo chamativo e criativo para a obra e uma descricao poetica, artistica e envolvente "
+        "(com cerca de 2 a 4 frases, em portugues de Portugal).\n\n"
+        "Responde APENAS com um objeto JSON valido, sem qualquer texto adicional ou blocos de codigo. "
+        "O formato do JSON deve ser exatamente:\n"
         "{\n"
-        '  "titulo": "Sugestão de título",\n'
-        '  "descricao": "Sugestão de descrição artística"\n'
+        '  "titulo": "Sugestao de titulo",\n'
+        '  "descricao": "Sugestao de descricao artistica"\n'
         "}"
     )
 
     headers = {
         "Content-Type": "application/json",
         "X-goog-api-key": api_key,
+        "User-Agent": "ArteNuvem/1.0",
     }
+    public_referer = _public_referer(referer)
+    if public_referer:
+        headers["Referer"] = public_referer
+
     payload = {
         "contents": [
             {
@@ -174,27 +233,65 @@ def gerar_sugestao_obra(ideia: str) -> dict:
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=15)
-        if response.status_code == 200:
-            res_json = response.json()
-            candidates = res_json.get("candidates", [])
-            if candidates:
-                content = candidates[0].get("content", {})
-                parts = content.get("parts", [])
-                if parts:
-                    raw_text = parts[0].get("text", "").strip()
-                    # Extrair objeto JSON de forma robusta
-                    import re
-                    match = re.search(r"\{.*\}", raw_text, re.DOTALL)
-                    if match:
-                        raw_text = match.group(0)
-                    data = json.loads(raw_text)
-                    return {
-                        "titulo": data.get("titulo", "").strip(),
-                        "descricao": data.get("descricao", "").strip(),
-                    }
-        return {"error": f"Erro de comunicação com o serviço de IA (HTTP {response.status_code})."}
+        last_status = None
+        last_detail = None
+        for model_name in _get_gemini_models():
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+            response = requests.post(url, headers=headers, json=payload, timeout=15)
+            if response.status_code == 200:
+                res_json = response.json()
+                candidates = res_json.get("candidates", [])
+                if candidates:
+                    content = candidates[0].get("content", {})
+                    parts = content.get("parts", [])
+                    if parts:
+                        raw_text = parts[0].get("text", "").strip()
+                        if not raw_text:
+                            logger.error("Gemini devolveu texto vazio no modelo %s: %s", model_name, json.dumps(res_json, ensure_ascii=False)[:500])
+                            last_status = 200
+                            last_detail = "Resposta vazia"
+                            continue
+                        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+                        if match:
+                            raw_text = match.group(0)
+                        try:
+                            data = json.loads(raw_text)
+                        except json.JSONDecodeError:
+                            logger.error("Gemini devolveu JSON invalido no modelo %s: %s", model_name, raw_text[:500])
+                            last_status = 200
+                            last_detail = "JSON invalido"
+                            continue
+                        return {
+                            "titulo": data.get("titulo", "").strip(),
+                            "descricao": data.get("descricao", "").strip(),
+                        }
+
+                logger.error("Gemini respondeu sem sugestao valida no modelo %s: %s", model_name, json.dumps(res_json, ensure_ascii=False)[:500])
+                return {"error": "A IA respondeu, mas nao devolveu uma sugestao valida. Tenta novamente."}
+
+            last_status = response.status_code
+            last_detail = _extract_google_error(response)
+            logger.error("Erro Gemini HTTP %s no modelo %s: %s", last_status, model_name, last_detail)
+
+            if last_status in (429, 500, 502, 503, 504):
+                continue
+            if last_status == 403:
+                return {
+                    "error": (
+                        "A chave Gemini foi recusada pelo Google (HTTP 403). "
+                        "Verifica no Google AI Studio/Cloud se a key tem acesso ao Gemini "
+                        "e se as restricoes permitem chamadas a partir de https://artenuvem.onrender.com."
+                    )
+                }
+            return {"error": f"Erro de comunicacao com o servico de IA (HTTP {last_status})."}
+
+        if last_status in (429, 503):
+            return {"error": "O Gemini esta temporariamente ocupado ou em limite de quota. Tenta novamente dentro de instantes."}
+        if last_status == 200:
+            return {"error": "A IA respondeu, mas nao devolveu uma sugestao valida. Tenta novamente."}
+        return {"error": f"Erro de comunicacao com o servico de IA (HTTP {last_status})."}
     except Exception as e:
+        logger.exception("Erro ao contactar Gemini")
         return {"error": f"Ocorreu um erro ao contactar a IA: {e}"}
 
 
